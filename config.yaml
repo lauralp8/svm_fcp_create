@@ -1,0 +1,11 @@
+cluster:
+  host: cluster1.demo.netapp.com
+  username: admin
+  password: Netapp1!
+
+svm: 
+  name: svm_demo
+  ipspace: Default
+  root_volume: svm_demo_root
+  security_style: unix
+  language: c.utf_8
