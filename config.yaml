@@ -8,6 +8,7 @@ svm:
   ipspace: Default  
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
+  security_style: unix
   # root_volume: svm_1_cluster_root # Se crea automáticamente. No es necesario especificarlo.
 
   # Parámetros de modificación

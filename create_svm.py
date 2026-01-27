@@ -162,7 +162,6 @@ def create_svm(svm_config):
         svm_name = svm_config.get('name')
         ipspace = svm_config.get('ipspace')
         language = svm_config.get('language')
-        root_volume = svm_config.get('root_volume')
         security_style = svm_config.get('security_style')
         aggregate = svm_config.get('aggregate')
         
@@ -193,6 +192,11 @@ def create_svm(svm_config):
         if language:
             new_svm.language = language
             print(f"[*] Language: {language}")
+        
+        # Configurar security style
+        if security_style:
+            new_svm.security_style = security_style
+            print(f"[*] Security Style: {security_style}")
         
         # Especificar el agregado para el volumen raíz
         new_svm.aggregates = [{'name': aggregate}]
