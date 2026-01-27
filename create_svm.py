@@ -234,6 +234,50 @@ def create_svm(svm_config):
         return False
 
 
+def modify_svm(svm_name):
+    """
+    Modifica una SVM configurando parámetros de espacio lógico a true
+    
+    Args:
+        svm_name: Nombre de la SVM a modificar
+    
+    Returns:
+        bool: True si se modificó exitosamente, False si hubo error
+    """
+    try:
+        print(f"\n[*] Modifying SVM: {svm_name}")
+        
+        # Buscar la SVM
+        svm = Svm.find(name=svm_name)
+        if not svm:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+            return False
+        
+        # Configurar parámetros de espacio lógico a true
+        svm.is_space_reporting_logical = True
+        svm.is_space_enforcement_logical = True
+        
+        print(f"[*] is_space_reporting_logical: True")
+        print(f"[*] is_space_enforcement_logical: True")
+        
+        # Aplicar cambios
+        print(f"[*] Applying changes...")
+        svm.patch()
+        
+        print(f"[+] SVM '{svm_name}' modified successfully!")
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
 
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
@@ -259,6 +303,12 @@ else:
     print("\n[FAILED] SVM creation failed")
     exit(1)
 
+# Modificar la SVM
+if modify_svm(config_data['svm']['name']):
+    print("\n[SUCCESS] SVM modification completed!")
+else:
+    print("\n[FAILED] SVM modification failed")
+    exit(1)
 
 print("\n[+] Script completed successfully!")
 
