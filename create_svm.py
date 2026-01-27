@@ -1,5 +1,5 @@
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Svm
+from netapp_ontap.resources import Svm, FcpService
 import yaml
 
 print("Starting SVM creation script...")
@@ -300,6 +300,61 @@ def modify_svm(svm_config):
         return False
 
 
+def fcp_create(svm_config):
+    """
+    Crea un servicio FCP en la SVM y lo configura con status-admin desde config.yaml
+    
+    Basado en: vserver fcp create -vserver <name> -status-admin <up|down>
+    
+    Args:
+        svm_config: Diccionario con la configuración de la SVM del config.yaml
+    
+    Returns:
+        bool: True si se creó exitosamente, False si hubo error
+    """
+    try:
+        # Extraer nombre de la SVM del config
+        svm_name = svm_config.get('name')
+        
+        # Extraer status_admin del config.yaml (true = up, false = down)
+        fcp_status_admin = svm_config.get('fcp_status_admin', False)
+        
+        print(f"\n[*] Creating FCP service on SVM: {svm_name}")
+        
+        # Crear objeto FCP service
+        fcp = FcpService()
+        fcp.svm = {'name': svm_name}
+        fcp.enabled = fcp_status_admin
+        
+        # Crear el servicio FCP
+        print(f"[*] Creating FCP service...")
+        fcp.post()
+        
+        status_text = "up" if fcp_status_admin else "down"
+        print(f"[+] FCP service created successfully!")
+        print(f"[*] Status admin: {status_text}")
+        
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during FCP creation")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        if error.status_code == 409:
+            print(f"[ERROR] FCP service may already exist on this SVM")
+        elif error.status_code == 400:
+            print(f"[ERROR] Bad request - Invalid parameters")
+        else:
+            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during FCP creation: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -329,6 +384,13 @@ if modify_svm(config_data['svm']):
     print("\n[SUCCESS] SVM modification completed!")
 else:
     print("\n[FAILED] SVM modification failed")
+    exit(1)
+
+# Crear servicio FCP en la SVM
+if fcp_create(config_data['svm']):
+    print("\n[SUCCESS] FCP service creation completed!")
+else:
+    print("\n[FAILED] FCP service creation failed")
     exit(1)
 
 print("\n[+] Script completed successfully!")

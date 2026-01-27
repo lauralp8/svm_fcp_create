@@ -17,3 +17,6 @@ svm:
     - cluster1_02_SSD_1
   is_space_reporting_logical: true
   is_space_enforcement_logical: true
+  
+  # Parámetros FCP
+  fcp_status_admin: true  # true = up, false = down
