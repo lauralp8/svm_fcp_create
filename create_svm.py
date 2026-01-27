@@ -12,6 +12,10 @@ def config_loader(path="config.yaml"):
     return config_data
 
 
+# Cargar la configuración desde el archivo YAML
+config_data = config_loader()
+
+# Establecer conexión usando los datos del archivo de configuración
 config.CONNECTION = HostConnection(
     'cluster1.demo.netapp.com',
     username='admin',
