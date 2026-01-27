@@ -355,31 +355,34 @@ def fcp_create(svm_config):
         return False
 
 
-def add_protocols(svm_config):
+def protocols(svm_config):
     """
-    Añade protocolos a una SVM
+    Añade y elimina protocolos de una SVM
     
-    Basado en: vserver add-protocols -vserver <name> -protocols <protocol1,protocol2>
+    Basado en: 
+    - vserver add-protocols -vserver <name> -protocols <protocol1,protocol2>
+    - vserver remove-protocols -vserver <name> -protocols <protocol1,protocol2>
     
     Args:
         svm_config: Diccionario con la configuración de la SVM del config.yaml
     
     Returns:
-        bool: True si se añadieron exitosamente, False si hubo error
+        bool: True si se ejecutó exitosamente, False si hubo error
     """
     try:
         # Extraer nombre de la SVM del config
         svm_name = svm_config.get('name')
         
-        # Extraer lista de protocolos del config.yaml
-        protocols_list = svm_config.get('protocols_list', [])
+        # Extraer lista de protocolos a añadir del config.yaml
+        add_protocols_list = svm_config.get('add_protocols_list', [])
+        # Extraer lista de protocolos a eliminar del config.yaml
+        delete_protocols_list = svm_config.get('delete_protocols_list', [])
         
-        if not protocols_list:
+        if not add_protocols_list and not delete_protocols_list:
             print(f"[WARNING] No protocols specified in config.yaml")
             return True
         
-        print(f"\n[*] Adding protocols to SVM: {svm_name}")
-        print(f"[*] Protocols: {', '.join(protocols_list)}")
+        print(f"\n[*] Managing protocols for SVM: {svm_name}")
         
         # Buscar la SVM
         svm = Svm.find(name=svm_name)
@@ -390,31 +393,40 @@ def add_protocols(svm_config):
         # Obtener SVM completa
         svm.get()
         
-        # Añadir protocolos a la lista existente
+        # Obtener protocolos actuales
         current_protocols = getattr(svm, 'allowed_protocols', []) or []
+        print(f"[*] Current protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
         
-        # Combinar protocolos existentes con nuevos (sin duplicados)
-        all_protocols = list(set(current_protocols + protocols_list))
+        # Eliminar protocolos primero
+        if delete_protocols_list:
+            print(f"\n[*] Removing protocols: {', '.join(delete_protocols_list)}")
+            current_protocols = [i for i in current_protocols if i not in delete_protocols_list]
         
-        svm.allowed_protocols = all_protocols
+        # Añadir protocolos después
+        if add_protocols_list:
+            print(f"[*] Adding protocols: {', '.join(add_protocols_list)}")
+            # Combinar protocolos existentes con nuevos (sin duplicados)
+            current_protocols = list(set(current_protocols + add_protocols_list))
         
         # Aplicar cambios
+        svm.allowed_protocols = current_protocols
+        
         print(f"[*] Applying protocol changes...")
         svm.patch()
         
-        print(f"[+] Protocols added successfully!")
-        print(f"[+] Current protocols: {', '.join(all_protocols)}")
+        print(f"[+] Protocols updated successfully!")
+        print(f"[+] Final protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
         
         return True
     
     except NetAppRestError as error:
-        print(f"[ERROR] NetApp API error during protocol addition")
+        print(f"[ERROR] NetApp API error during protocol management")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
         return False
     
     except Exception as e:
-        print(f"[ERROR] Unexpected error during protocol addition: {type(e).__name__}")
+        print(f"[ERROR] Unexpected error during protocol management: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
         return False
 
@@ -458,7 +470,7 @@ else:
     exit(1)
 
 # Añadir protocolos a la SVM
-if add_protocols(config_data['svm']):
+if protocols(config_data['svm']):
     print("\n[SUCCESS] Protocols added successfully!")
 else:
     print("\n[FAILED] Failed to add protocols")
