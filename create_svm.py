@@ -234,6 +234,62 @@ def create_svm(svm_config):
         return False
 
 
+def modify_svm(svm_name, space_reporting, space_enforcement):
+    """
+    Modifica una SVM configurando parámetros de espacio lógico
+    
+    Basado en: vserver modify -vserver <name> 
+               -is-space-reporting-logical true 
+               -is-space-enforcement-logical true
+    
+    Args:
+        svm_name: Nombre de la SVM a modificar
+        space_reporting: True/False para space reporting logical
+        space_enforcement: True/False para space enforcement logical
+    
+    Returns:
+        bool: True si se modificó exitosamente, False si hubo error
+    """
+    try:
+        print(f"\n[*] Modifying SVM: {svm_name}")
+        
+        # Buscar la SVM existente
+        svm = Svm.find(name=svm_name)
+        if not svm:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+            return False
+        
+        print(f"[*] SVM found - UUID: {svm.uuid}")
+        
+        # Crear estructura de space configuration
+        svm.space = {
+            'logical_space': {
+                'reporting': space_reporting,
+                'enforcement': space_enforcement
+            }
+        }
+        
+        print(f"[*] Space reporting logical: {space_reporting}")
+        print(f"[*] Space enforcement logical: {space_enforcement}")
+        
+        # Enviar petición de modificación
+        print(f"[*] Sending modify request...")
+        svm.patch()
+        
+        print(f"[+] SVM '{svm_name}' modified successfully!")
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during SVM modification")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        print(f"[ERROR] Response: {error.http_err_response.http_response.text}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during SVM modification: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
 
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
@@ -259,6 +315,16 @@ else:
     print("\n[FAILED] SVM creation failed")
     exit(1)
 
+# Modificar la SVM si hay parámetros de modificación en el config
+if 'space_reporting_logical' in config_data['svm'] or 'space_enforcement_logical' in config_data['svm']:
+    space_reporting = config_data['svm'].get('space_reporting_logical', True)
+    space_enforcement = config_data['svm'].get('space_enforcement_logical', True)
+    
+    if modify_svm(config_data['svm']['name'], space_reporting, space_enforcement):
+        print("\n[SUCCESS] SVM modification completed!")
+    else:
+        print("\n[WARNING] SVM modification failed")
+        exit(1)
 
 print("\n[+] Script completed successfully!")
 
