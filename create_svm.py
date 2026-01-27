@@ -234,17 +234,24 @@ def create_svm(svm_config):
         return False
 
 
-def modify_svm(svm_name):
+def modify_svm(svm_config):
     """
-    Modifica una SVM configurando parámetros de espacio lógico a true
+    Modifica una SVM configurando parámetros de espacio lógico
     
     Args:
-        svm_name: Nombre de la SVM a modificar
+        svm_config: Diccionario con la configuración de la SVM del config.yaml
     
     Returns:
         bool: True si se modificó exitosamente, False si hubo error
     """
     try:
+        # Extraer nombre de la SVM del config
+        svm_name = svm_config.get('name')
+        
+        # Extraer valores de espacio lógico del config.yaml
+        space_reporting = svm_config.get('is_space_reporting_logical', False)
+        space_enforcement = svm_config.get('is_space_enforcement_logical', False)
+        
         print(f"\n[*] Modifying SVM: {svm_name}")
         
         # Buscar la SVM
@@ -253,12 +260,12 @@ def modify_svm(svm_name):
             print(f"[ERROR] SVM '{svm_name}' not found")
             return False
         
-        # Configurar parámetros de espacio lógico a true
-        svm.is_space_reporting_logical = True
-        svm.is_space_enforcement_logical = True
+        # Configurar parámetros de espacio lógico desde config.yaml
+        svm.is_space_reporting_logical = space_reporting
+        svm.is_space_enforcement_logical = space_enforcement
         
-        print(f"[*] is_space_reporting_logical: True")
-        print(f"[*] is_space_enforcement_logical: True")
+        print(f"[*] is_space_reporting_logical: {space_reporting}")
+        print(f"[*] is_space_enforcement_logical: {space_enforcement}")
         
         # Aplicar cambios
         print(f"[*] Applying changes...")
@@ -304,7 +311,7 @@ else:
     exit(1)
 
 # Modificar la SVM
-if modify_svm(config_data['svm']['name']):
+if modify_svm(config_data['svm']):
     print("\n[SUCCESS] SVM modification completed!")
 else:
     print("\n[FAILED] SVM modification failed")

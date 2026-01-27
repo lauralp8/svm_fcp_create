@@ -10,4 +10,6 @@ svm:
   language: c.utf_8
   # root_volume: svm_1_cluster_root # Se crea automáticamente. No es necesario especificarlo.
 
-
+  # Parámetros de modificación
+  is_space_reporting_logical: true
+  is_space_enforcement_logical: true
