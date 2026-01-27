@@ -234,96 +234,6 @@ def create_svm(svm_config):
         return False
 
 
-def modify_svm(svm_name, modify_config):
-    """
-    Modifica una SVM existente añadiendo agregados y configurando parámetros de espacio
-    
-    Basado en: vserver modify -vserver <name> -aggr-list <aggr1,aggr2> 
-               -is-space-reporting-logical true -is-space-enforcement-logical true
-    
-    Args:
-        svm_name: Nombre de la SVM a modificar
-        modify_config: Diccionario con parámetros de modificación
-    
-    Returns:
-        bool: True si se modificó exitosamente, False si hubo error
-    """
-    try:
-        print(f"\n[*] Modifying SVM: {svm_name}")
-        
-        # Buscar la SVM existente
-        svm = Svm.find(name=svm_name)
-        if not svm:
-            print(f"[ERROR] SVM '{svm_name}' not found")
-            return False
-        
-        # Obtener el objeto completo de la SVM
-        svm.get()
-        
-        # Preparar lista de agregados adicionales
-        additional_aggregates = modify_config.get('additional_aggregates', [])
-        
-        # Añadir nuevos agregados a la lista existente
-        if additional_aggregates:
-            # Obtener agregados actuales
-            current_aggregates = svm.aggregates or []
-            current_aggr_names = [aggr['name'] for aggr in current_aggregates]
-            
-            # Añadir solo los que no existen ya
-            for new_aggr in additional_aggregates:
-                if new_aggr not in current_aggr_names:
-                    current_aggregates.append({'name': new_aggr})
-                    print(f"[*] Adding aggregate: {new_aggr}")
-            
-            svm.aggregates = current_aggregates
-        
-        # Configurar space reporting y enforcement logical
-        space_reporting = modify_config.get('space_reporting_logical')
-        space_enforcement = modify_config.get('space_enforcement_logical')
-        
-        if space_reporting is not None or space_enforcement is not None:
-            # Crear estructura de space con logical_space
-            space_config = {}
-            
-            if space_reporting is not None:
-                space_config['reporting'] = space_reporting
-                print(f"[*] Space reporting logical: {space_reporting}")
-            
-            if space_enforcement is not None:
-                space_config['enforcement'] = space_enforcement
-                print(f"[*] Space enforcement logical: {space_enforcement}")
-            
-            # Asignar la configuración completa de space
-            svm.space = {
-                'logical_space': space_config
-            }
-        
-        # Enviar petición de modificación
-        print(f"[*] Sending modify request...")
-        svm.patch()
-        
-        print(f"[+] SVM '{svm_name}' modified successfully!")
-        return True
-    
-    except NetAppRestError as error:
-        print(f"[ERROR] NetApp API error during SVM modification")
-        print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        if error.status_code == 404:
-            print(f"[ERROR] SVM or resource not found")
-        elif error.status_code == 400:
-            print(f"[ERROR] Bad request - Invalid parameters")
-            print(f"[ERROR] Check that aggregate names are correct")
-        else:
-            print(f"[ERROR] Response: {error.http_err_response.http_response.text}")
-        
-        return False
-    
-    except Exception as e:
-        print(f"[ERROR] Unexpected error during SVM modification: {type(e).__name__}")
-        print(f"[ERROR] Details: {str(e)}")
-        return False
-
 
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
@@ -349,14 +259,6 @@ else:
     print("\n[FAILED] SVM creation failed")
     exit(1)
 
-# Verificar si hay configuración de modificación (SEPARADO de la creación)
-if 'modify' in config_data['svm']:
-    print("\n[*] Additional SVM configuration detected...")
-    if modify_svm(config_data['svm']['name'], config_data['svm']['modify']):
-        print("\n[SUCCESS] SVM modification completed!")
-    else:
-        print("\n[WARNING] SVM modification failed")
-        exit(1)
 
 print("\n[+] Script completed successfully!")
 

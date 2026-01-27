@@ -10,8 +10,3 @@ svm:
   language: c.utf_8
   # root_volume: svm_1_cluster_root # Se crea automáticamente. No es necesario especificarlo.
 
-  modify:
-    additional_aggregates:
-      - cluster1_02_SSD_1
-    space_reporting_logical: true
-    space_enforcement_logical: true
