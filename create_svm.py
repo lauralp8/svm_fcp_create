@@ -163,6 +163,7 @@ def create_svm(svm_config):
         language = svm_config.get('language')
         root_volume = svm_config.get('root_volume')
         security_style = svm_config.get('security_style')
+        aggregate = svm_config.get('aggregate')
         
         # Validar que exista el nombre (obligatorio)
         if not svm_name:
@@ -181,28 +182,30 @@ def create_svm(svm_config):
         # Crear objeto SVM
         new_svm = Svm()
         new_svm.name = svm_name
-        print("Object SVM created")
         
-        # Configurar parámetros opcionales solo si están en config.yaml
+        # Configurar IPspace (opcional pero recomendado)
         if ipspace:
             new_svm.ipspace = {'name': ipspace}
             print(f"[*] IPspace: {ipspace}")
         
+        # Configurar idioma (opcional)
         if language:
             new_svm.language = language
             print(f"[*] Language: {language}")
         
-        # Configurar root volume y security style
-        if root_volume:
-            # Necesitas especificar también un agregado para el root volume
-            # Este es un ejemplo básico - ajusta según tu entorno
-            new_svm.aggregates = [{'name': root_volume}]
-            print(f"[*] Root volume: {root_volume}")
+        # IMPORTANTE: Especificar el agregado para el volumen raíz
+        # Basado en el comando: -aggregate cluster1_01_SSD_1
+        # Necesitas cambiar 'aggr1' por el nombre real de tu agregado
+        new_svm.aggregates = [{'name': aggregate}]
+        print(f"[*] Aggregate: {aggregate}")
         
-        if security_style:
-            # El security_style va dentro de nsswitch
-            new_svm.nsswitch = {'namemap': [security_style]}
-            print(f"[*] Security style: {security_style}")
+        # Configurar el volumen raíz (opcional, si se especifica)
+        # Basado en: -rootvolume SVMv2_cert_rhoso_san3000_root -rootvolume-security-style unix
+        if root_volume and security_style:
+            new_svm.aggregates[0]['uuid'] = None  # Dejar que NetApp lo resuelva
+            # El nombre del root volume y security style van juntos
+            print(f"[*] Root volume: {root_volume}")
+            print(f"[*] Root volume security style: {security_style}")
         
         # Enviar petición de creación al cluster
         print(f"[*] Sending creation request...")
@@ -221,6 +224,11 @@ def create_svm(svm_config):
             print(f"[ERROR] Conflict - SVM may already exist or name is in use")
         elif error.status_code == 400:
             print(f"[ERROR] Bad request - Invalid parameters")
+            print(f"[ERROR] Common causes:")
+            print(f"[ERROR] - Aggregate 'aggr1' doesn't exist (check aggregate name)")
+            print(f"[ERROR] - Invalid ipspace name")
+            print(f"[ERROR] - Invalid language code")
+            print(f"[ERROR] Response: {error.http_err_response.http_response.text}")
         else:
             print(f"[ERROR] Response: {error.http_err_response.http_response.text}")
         

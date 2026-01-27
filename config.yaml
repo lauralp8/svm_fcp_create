@@ -5,7 +5,8 @@ cluster:
 
 svm: 
   name: svm_demo
-  ipspace: Default
+  ipspace: Default  
+  aggregate: cluster1_01_SSD_1
   root_volume: svm_1_cluster_root
   security_style: unix
   language: c.utf_8
