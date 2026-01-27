@@ -355,78 +355,80 @@ def fcp_create(svm_config):
         return False
 
 
-def remove_protocols(svm_config):
+def fcp_protocol(svm_config):
     """
-    Obtiene la lista de protocolos permitidos y elimina los especificados desde config.yaml
+    Gestiona los protocolos de la SVM añadiendo y eliminando según configuración
     
-    Equivalente a:
-    PASO 1: vserver show -vserver <name> -fields allowed-protocols
-    PASO 2: vserver remove-protocols -vserver <name> -protocols cifs,nfs,ndmp,s3
+    Basado en los comandos:
+    - vserver add-protocols -vserver <name> -protocols <protocolo1,protocolo2,...>
+    - vserver remove-protocols -vserver <name> -protocols <protocolo1,protocolo2,...>
+    
+    La función primero elimina los protocolos especificados en 'remove_protocols_list'
+    y luego añade los especificados en 'add_protocols_list', evitando duplicados.
     
     Args:
         svm_config: Diccionario con la configuración de la SVM del config.yaml
+                    Debe contener 'name', 'add_protocols_list', 'remove_protocols_list'
     
     Returns:
-        bool: True si se eliminaron exitosamente, False si hubo error
+        bool: True si se configuraron exitosamente, False si hubo error
     """
     try:
         # Extraer nombre de la SVM del config
         svm_name = svm_config.get('name')
         
-        # Extraer lista de protocolos a eliminar desde config.yaml
-        protocols_to_delete = svm_config.get('delete_protocols_list', [])
+        # Extraer listas de protocolos desde config.yaml
+        add_protocols = svm_config.get('add_protocols_list', [])
+        remove_protocols = svm_config.get('remove_protocols_list', [])
         
-        print(f"\n[*] Managing protocol removal for SVM: {svm_name}")
+        print(f"\n[*] Managing protocols on SVM: {svm_name}")
         
-        # Buscar la SVM
+        # Buscar la SVM existente
         svm = Svm.find(name=svm_name)
         if not svm:
             print(f"[ERROR] SVM '{svm_name}' not found")
             return False
         
-        # PASO 1: Obtener información completa de la SVM incluyendo protocolos
-        # Equivalente a: vserver show -vserver <name> -fields allowed-protocols
-        print(f"[*] Step 1: Getting current allowed protocols...")
+        # Obtener la SVM completa con sus protocolos actuales
         svm.get()
         
-        # Obtener la lista actual de protocolos permitidos
+        # Obtener lista de protocolos actuales (o lista vacía si no tiene)
+        # El getattr evita AttributeError si allowed_protocols no existe
         current_protocols = getattr(svm, 'allowed_protocols', []) or []
         
-        if not current_protocols:
-            print(f"[*] No protocols currently configured on SVM '{svm_name}'")
-            return True
+        print(f"[*] Current protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
         
-        print(f"[*] Current allowed protocols: {', '.join(current_protocols)}")
+        # Paso 1: Eliminar protocolos especificados
+        if remove_protocols:
+            print(f"[*] Removing protocols: {', '.join(remove_protocols)}")
+            # Filtrar la lista actual eliminando los que están en remove_protocols
+            current_protocols = [p for p in current_protocols if p not in remove_protocols]
         
-        # PASO 2: Eliminar los protocolos especificados
-        # Equivalente a: vserver remove-protocols -vserver <name> -protocols cifs,nfs,ndmp,s3
-        if protocols_to_delete:
-            print(f"[*] Step 2: Removing protocols: {', '.join(protocols_to_delete)}")
-            
-            # Filtrar: mantener solo los protocolos que NO estén en la lista de eliminación
-            new_protocols = [p for p in current_protocols if p not in protocols_to_delete]
-            
-            # Actualizar la lista de protocolos permitidos
-            svm.allowed_protocols = new_protocols
-            
-            print(f"[*] New protocol list after removal: {', '.join(new_protocols) if new_protocols else 'None'}")
-            print(f"[*] Applying changes...")
-            
-            # Aplicar cambios
-            svm.patch()
-            
-            print(f"[+] Protocols removed successfully!")
-        else:
-            print(f"[*] No protocols specified for removal in config.yaml")
+        # Paso 2: Añadir nuevos protocolos
+        if add_protocols:
+            print(f"[*] Adding protocols: {', '.join(add_protocols)}")
+            # Añadir los nuevos protocolos evitando duplicados con set()
+            current_protocols = list(set(current_protocols + add_protocols))
+        
+        # Actualizar la SVM con la nueva lista de protocolos
+        svm.allowed_protocols = current_protocols
+        
+        print(f"[*] Applying protocol configuration...")
+        svm.patch()
+        
+        print(f"[+] Protocols configured successfully!")
+        print(f"[*] Final protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
         
         return True
     
     except NetAppRestError as error:
-        print(f"[ERROR] NetApp API error during protocol removal")
+        print(f"[ERROR] NetApp API error during protocol management")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         
-        if error.status_code == 400:
-            print(f"[ERROR] Bad request - Invalid protocol name")
+        if error.status_code == 404:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+        elif error.status_code == 400:
+            print(f"[ERROR] Bad request - Invalid protocol names")
             print(f"[ERROR] Valid protocols: nfs, cifs, fcp, iscsi, nvme, s3, ndmp")
         else:
             print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
@@ -434,11 +436,9 @@ def remove_protocols(svm_config):
         return False
     
     except Exception as e:
-        print(f"[ERROR] Unexpected error during protocol removal: {type(e).__name__}")
+        print(f"[ERROR] Unexpected error during protocol management: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
         return False
-
-
 
 
 
@@ -481,12 +481,13 @@ else:
     print("\n[FAILED] FCP service creation failed")
     exit(1)
 
-# Eliminar protocolos de la SVM
-if remove_protocols(config_data['svm']):
-    print("\n[SUCCESS] Protocol removal completed!")
+# Gestionar protocolos de la SVM (añadir y eliminar)
+if fcp_protocol(config_data['svm']):
+    print("\n[SUCCESS] Protocol configuration completed!")
 else:
-    print("\n[FAILED] Protocol removal failed")
+    print("\n[FAILED] Protocol configuration failed")
     exit(1)
+
 
 print("\n[+] Script completed successfully!")
 
