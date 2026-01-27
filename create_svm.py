@@ -2,6 +2,7 @@ from netapp_ontap import config, HostConnection, NetAppRestError
 from netapp_ontap.resources import Svm
 import yaml
 
+print("Starting SVM creation script...")
 
 def config_loader(path="config.yaml"):
     print("Openning config.yaml for SVM creation parameters...")
