@@ -355,6 +355,70 @@ def fcp_create(svm_config):
         return False
 
 
+def add_protocols(svm_config):
+    """
+    Añade protocolos a una SVM
+    
+    Basado en: vserver add-protocols -vserver <name> -protocols <protocol1,protocol2>
+    
+    Args:
+        svm_config: Diccionario con la configuración de la SVM del config.yaml
+    
+    Returns:
+        bool: True si se añadieron exitosamente, False si hubo error
+    """
+    try:
+        # Extraer nombre de la SVM del config
+        svm_name = svm_config.get('name')
+        
+        # Extraer lista de protocolos del config.yaml
+        protocols_list = svm_config.get('protocols_list', [])
+        
+        if not protocols_list:
+            print(f"[WARNING] No protocols specified in config.yaml")
+            return True
+        
+        print(f"\n[*] Adding protocols to SVM: {svm_name}")
+        print(f"[*] Protocols: {', '.join(protocols_list)}")
+        
+        # Buscar la SVM
+        svm = Svm.find(name=svm_name)
+        if not svm:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+            return False
+        
+        # Obtener SVM completa
+        svm.get()
+        
+        # Añadir protocolos a la lista existente
+        current_protocols = getattr(svm, 'allowed_protocols', []) or []
+        
+        # Combinar protocolos existentes con nuevos (sin duplicados)
+        all_protocols = list(set(current_protocols + protocols_list))
+        
+        svm.allowed_protocols = all_protocols
+        
+        # Aplicar cambios
+        print(f"[*] Applying protocol changes...")
+        svm.patch()
+        
+        print(f"[+] Protocols added successfully!")
+        print(f"[+] Current protocols: {', '.join(all_protocols)}")
+        
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during protocol addition")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during protocol addition: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -391,6 +455,13 @@ if fcp_create(config_data['svm']):
     print("\n[SUCCESS] FCP service creation completed!")
 else:
     print("\n[FAILED] FCP service creation failed")
+    exit(1)
+
+# Añadir protocolos a la SVM
+if add_protocols(config_data['svm']):
+    print("\n[SUCCESS] Protocols added successfully!")
+else:
+    print("\n[FAILED] Failed to add protocols")
     exit(1)
 
 print("\n[+] Script completed successfully!")
