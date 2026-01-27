@@ -277,23 +277,26 @@ def modify_svm(svm_name, modify_config):
             
             svm.aggregates = current_aggregates
         
-        # Configurar space reporting logical
+        # Configurar space reporting y enforcement logical
         space_reporting = modify_config.get('space_reporting_logical')
-        if space_reporting is not None:
-            if not svm.space:
-                svm.space = {}
-            svm.space['logical_space'] = {'reporting': space_reporting}
-            print(f"[*] Space reporting logical: {space_reporting}")
-        
-        # Configurar space enforcement logical
         space_enforcement = modify_config.get('space_enforcement_logical')
-        if space_enforcement is not None:
-            if not svm.space:
-                svm.space = {}
-            if 'logical_space' not in svm.space:
-                svm.space['logical_space'] = {}
-            svm.space['logical_space']['enforcement'] = space_enforcement
-            print(f"[*] Space enforcement logical: {space_enforcement}")
+        
+        if space_reporting is not None or space_enforcement is not None:
+            # Crear estructura de space con logical_space
+            space_config = {}
+            
+            if space_reporting is not None:
+                space_config['reporting'] = space_reporting
+                print(f"[*] Space reporting logical: {space_reporting}")
+            
+            if space_enforcement is not None:
+                space_config['enforcement'] = space_enforcement
+                print(f"[*] Space enforcement logical: {space_enforcement}")
+            
+            # Asignar la configuración completa de space
+            svm.space = {
+                'logical_space': space_config
+            }
         
         # Enviar petición de modificación
         print(f"[*] Sending modify request...")
@@ -342,17 +345,19 @@ print("\n[+] All pre-checks passed - Ready to create SVM")
 # Crear la SVM
 if create_svm(config_data['svm']):
     print("\n[SUCCESS] SVM creation completed!")
-    
-    # Verificar si hay configuración de modificación
-    if 'modify' in config_data['svm']:
-        print("\n[*] Additional SVM configuration detected...")
-        if modify_svm(config_data['svm']['name'], config_data['svm']['modify']):
-            print("\n[SUCCESS] SVM modification completed!")
-        else:
-            print("\n[WARNING] SVM created but modification failed")
-            exit(1)
 else:
     print("\n[FAILED] SVM creation failed")
     exit(1)
+
+# Verificar si hay configuración de modificación (SEPARADO de la creación)
+if 'modify' in config_data['svm']:
+    print("\n[*] Additional SVM configuration detected...")
+    if modify_svm(config_data['svm']['name'], config_data['svm']['modify']):
+        print("\n[SUCCESS] SVM modification completed!")
+    else:
+        print("\n[WARNING] SVM modification failed")
+        exit(1)
+
+print("\n[+] Script completed successfully!")
 
 
