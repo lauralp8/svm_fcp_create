@@ -248,9 +248,14 @@ def modify_svm(svm_config):
         # Extraer nombre de la SVM del config
         svm_name = svm_config.get('name')
         
+        # Extraer lista de agregados del config.yaml
+        aggr_list = svm_config.get('aggr_list', [])
+
         # Extraer valores de espacio lógico del config.yaml
         space_reporting = svm_config.get('is_space_reporting_logical', False)
         space_enforcement = svm_config.get('is_space_enforcement_logical', False)
+        
+        
         
         print(f"\n[*] Modifying SVM: {svm_name}")
         
@@ -259,6 +264,11 @@ def modify_svm(svm_config):
         if not svm:
             print(f"[ERROR] SVM '{svm_name}' not found")
             return False
+        
+        # Configurar lista de agregados si se especifica
+        if aggr_list:
+            svm.aggregates = [{'name': aggr} for aggr in aggr_list]
+            print(f"[*] Aggregate list: {', '.join(aggr_list)}")
         
         # Configurar parámetros de espacio lógico desde config.yaml
         svm.is_space_reporting_logical = space_reporting

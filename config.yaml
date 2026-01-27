@@ -11,5 +11,8 @@ svm:
   # root_volume: svm_1_cluster_root # Se crea automáticamente. No es necesario especificarlo.
 
   # Parámetros de modificación
+  aggr_list:
+    - cluster1_01_SSD_1
+    - cluster1_02_SSD_1
   is_space_reporting_logical: true
   is_space_enforcement_logical: true
