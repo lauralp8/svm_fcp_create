@@ -83,6 +83,7 @@ def connect_to_cluster(cluster_config):
         
         # Validar que existan todos los campos necesarios
         required_keys = ['host', 'username', 'password']
+        # Itera por cada clave requerida y guarda en una lista las que faltan
         missing_keys = [key for key in required_keys if key not in cluster_config]
         
         if missing_keys:
@@ -183,36 +184,25 @@ def create_svm(svm_config):
         new_svm = Svm()
         new_svm.name = svm_name
         
-        # Configurar IPspace (opcional pero recomendado)
+        # Configurar IPspace 
         if ipspace:
             new_svm.ipspace = {'name': ipspace}
             print(f"[*] IPspace: {ipspace}")
         
-        # Configurar idioma (opcional)
+        # Configurar idioma
         if language:
             new_svm.language = language
             print(f"[*] Language: {language}")
         
-        # IMPORTANTE: Especificar el agregado para el volumen raíz
-        # Basado en el comando: -aggregate cluster1_01_SSD_1
-        # Necesitas cambiar 'aggr1' por el nombre real de tu agregado
+        # Especificar el agregado para el volumen raíz
         new_svm.aggregates = [{'name': aggregate}]
         print(f"[*] Aggregate: {aggregate}")
-        
-        # Configurar el volumen raíz (opcional, si se especifica)
-        # Basado en: -rootvolume SVMv2_cert_rhoso_san3000_root -rootvolume-security-style unix
-        if root_volume and security_style:
-            new_svm.aggregates[0]['uuid'] = None  # Dejar que NetApp lo resuelva
-            # El nombre del root volume y security style van juntos
-            print(f"[*] Root volume: {root_volume}")
-            print(f"[*] Root volume security style: {security_style}")
         
         # Enviar petición de creación al cluster
         print(f"[*] Sending creation request...")
         new_svm.post()
         
         print(f"[+] SVM '{svm_name}' created successfully!")
-        print(f"[+] UUID: {new_svm.uuid}")
         return True
     
     except NetAppRestError as error:
