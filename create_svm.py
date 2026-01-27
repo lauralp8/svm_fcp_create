@@ -146,6 +146,96 @@ def connect_to_cluster(cluster_config):
         return False
 
 
+def create_svm(svm_config):
+    """
+    Crea una SVM en NetApp ONTAP usando parámetros del config.yaml
+    
+    Args:
+        svm_config: Diccionario con la configuración de la SVM desde config.yaml
+    
+    Returns:
+        bool: True si se creó exitosamente, False si hubo error
+    """
+    try:
+        # Extraer parámetros del config.yaml
+        svm_name = svm_config.get('name')
+        ipspace = svm_config.get('ipspace')
+        language = svm_config.get('language')
+        root_volume = svm_config.get('root_volume')
+        security_style = svm_config.get('security_style')
+        
+        # Validar que exista el nombre (obligatorio)
+        if not svm_name:
+            print(f"[ERROR] 'name' is required in svm configuration")
+            return False
+        
+        print(f"\n[*] Creating SVM: {svm_name}")
+        
+        # Verificar si la SVM ya existe
+        print(f"[*] Checking if SVM already exists...")
+        existing_svm = Svm.find(name=svm_name)
+        if existing_svm:
+            print(f"[ERROR] SVM '{svm_name}' already exists with UUID: {existing_svm.uuid}")
+            return False
+        
+        # Crear objeto SVM
+        new_svm = Svm()
+        new_svm.name = svm_name
+        print("Object SVM created")
+        
+        # Configurar parámetros opcionales solo si están en config.yaml
+        if ipspace:
+            new_svm.ipspace = {'name': ipspace}
+            print(f"[*] IPspace: {ipspace}")
+        
+        if language:
+            new_svm.language = language
+            print(f"[*] Language: {language}")
+        
+        # Configurar root volume y security style
+        if root_volume:
+            # Necesitas especificar también un agregado para el root volume
+            # Este es un ejemplo básico - ajusta según tu entorno
+            new_svm.aggregates = [{'name': root_volume}]
+            print(f"[*] Root volume: {root_volume}")
+        
+        if security_style:
+            # El security_style va dentro de nsswitch
+            new_svm.nsswitch = {'namemap': [security_style]}
+            print(f"[*] Security style: {security_style}")
+        
+        # Enviar petición de creación al cluster
+        print(f"[*] Sending creation request...")
+        new_svm.post()
+        
+        print(f"[+] SVM '{svm_name}' created successfully!")
+        print(f"[+] UUID: {new_svm.uuid}")
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during SVM creation")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        # Proporcionar información detallada según el error
+        if error.status_code == 409:
+            print(f"[ERROR] Conflict - SVM may already exist or name is in use")
+        elif error.status_code == 400:
+            print(f"[ERROR] Bad request - Invalid parameters")
+        else:
+            print(f"[ERROR] Response: {error.http_err_response.http_response.text}")
+        
+        return False
+    
+    except KeyError as e:
+        print(f"[ERROR] Missing required configuration key: {str(e)}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during SVM creation: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -162,4 +252,12 @@ if not connect_to_cluster(config_data['cluster']):
     exit(1)
 
 print("\n[+] All pre-checks passed - Ready to create SVM")
+
+# Crear la SVM
+if create_svm(config_data['svm']):
+    print("\n[SUCCESS] SVM creation completed!")
+else:
+    print("\n[FAILED] SVM creation failed")
+    exit(1)
+
 

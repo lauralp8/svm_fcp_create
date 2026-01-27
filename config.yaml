@@ -6,6 +6,6 @@ cluster:
 svm: 
   name: svm_demo
   ipspace: Default
-  root_volume: svm_demo_root
+  root_volume: svm_1_cluster_root
   security_style: unix
   language: c.utf_8
