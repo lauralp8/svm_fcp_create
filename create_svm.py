@@ -322,7 +322,7 @@ def fcp_create(svm_config):
         # Extraer nombre de la SVM del config
         svm_name = svm_config.get('name')
         
-        # Extraer status_admin del config.yaml (true = up, false = down)
+        # Extraer status_admin del config.yaml 
         fcp_status_admin = svm_config.get('fcp_status_admin', False)
         
         print(f"\n[*] Creating FCP service on SVM: {svm_name}")
@@ -336,12 +336,14 @@ def fcp_create(svm_config):
         print(f"[*] Creating FCP service...")
         fcp.post()
         
+        # Mostrar estado del servicio como up/down
         status_text = "up" if fcp_status_admin else "down"
         print(f"[+] FCP service created successfully!")
         print(f"[*] Status admin: {status_text}")
         
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during FCP creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
