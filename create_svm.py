@@ -684,3 +684,10 @@ else:
     print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
+# Crear management interface
+mgmt_interface = config_data.get('mgmt_interface', {})
+if create_management_interface(config_data['svm']['name'], mgmt_interface):
+    print("\n[SUCCESS] Management interface creation completed!")
+else:
+    print("\n[FAILED] Management interface creation failed")
+    exit(1)
