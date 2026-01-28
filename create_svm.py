@@ -596,7 +596,7 @@ def create_management_interface(svm_name, mgmt_config):
         failover_policy = mgmt_config.get('failover_policy', 'system-defined')
         firewall_policy = mgmt_config.get('firewall_policy', 'mgmt')
         auto_revert = mgmt_config.get('auto_revert', False)
-        failover_group = mgmt_config.get('failover_group')
+        failover_group = mgmt_config.get('failover_group', 'Default')
         
         if not all([lif_name, address, netmask, home_node, home_port]):
             print(f"[ERROR] Management interface: Missing required fields")
@@ -616,17 +616,17 @@ def create_management_interface(svm_name, mgmt_config):
         }
         
         # Configurar location (home_node y home_port con node)
-        # El failover policy se determina automáticamente por el service-policy
         interface.location = {
             'home_node': {'name': home_node},
             'home_port': {
                 'name': home_port,
                 'node': {'name': home_node}
             },
-            'auto_revert': auto_revert
+            'auto_revert': auto_revert,
+            'failover': failover_policy
         }
         
-        # Configurar service policy (determina automáticamente el failover policy)
+        # Configurar service policy
         interface.service_policy = {'name': service_policy}
         
         # Configurar enabled (status-admin: up=true, down=false)
@@ -641,6 +641,8 @@ def create_management_interface(svm_name, mgmt_config):
         print(f"    - Service Policy: {service_policy}")
         print(f"    - Failover Policy: {failover_policy}")
         print(f"    - Auto Revert: {auto_revert}")
+        print(f"    - Firewall Policy: {firewall_policy}")
+        print(f"    - Failover Group: {failover_group}")
         
         return True
     
