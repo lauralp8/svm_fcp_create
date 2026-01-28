@@ -472,10 +472,13 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             interface.name = lif_name
             interface.svm = {'name': svm_name}
             
-            # Configurar location (home_node y home_port)
+            # Configurar location (home_node y home_port con node)
             interface.location = {
                 'home_node': {'name': home_node},
-                'home_port': {'name': home_port}
+                'home_port': {
+                    'name': home_port,
+                    'node': {'name': home_node}
+                }
             }
             
             # Configurar data_protocol
