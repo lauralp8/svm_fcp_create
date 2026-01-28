@@ -437,12 +437,7 @@ def configure_protocols(svm_config):
 def create_network_interfaces(svm_name, net_interfaces_config):
     """
     Crea network interfaces (LIFs) usando la API REST de ONTAP
-    
-    API: POST /api/network/fc/interfaces
-    Equivalente CLI: network interface create -vserver <svm> -lif <name> 
-                     -data-protocol fcp -home-node <node> 
-                     -home-port <port> -status-admin <up|down>
-    
+
     Args:
         svm_name: Nombre de la SVM
         net_interfaces_config: Lista de diccionarios con configuración de interfaces
@@ -451,18 +446,20 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         bool: True si todas se crearon exitosamente
     """
     try:
+        # Validar que haya interfaces para crear
         if not net_interfaces_config:
             print(f"[WARNING] No network interfaces configured")
             return True
         
         print(f"\n[*] Creating {len(net_interfaces_config)} network interface(s) for SVM: {svm_name}")
         
+        # Iterar por cada configuración de interfaz del config.yaml 
         for idx, interface_config in enumerate(net_interfaces_config, start=1):
             lif_name = interface_config.get('lif')
             data_protocol = interface_config.get('data_protocol')
             home_node = interface_config.get('home_node')
             home_port = interface_config.get('home_port')
-            status_admin = interface_config.get('status_admin', True)
+            status_admin = interface_config.get('status_admin', False)
             
             if not all([lif_name, home_node, home_port]):
                 print(f"[ERROR] Interface #{idx}: Missing required fields (lif, home_node, home_port)")
@@ -471,12 +468,12 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"\n[*] Creating interface #{idx}: {lif_name}")
             
             # Crear objeto FcInterface para protocolos FCP (SAN)
-            interface = FcInterface()
-            interface.name = lif_name
-            interface.svm = {'name': svm_name}
+            net_interface = FcInterface()
+            net_interface.name = lif_name
+            net_interface.svm = {'name': svm_name}
             
             # Configurar location (home_node y home_port con node)
-            interface.location = {
+            net_interface.location = {
                 'home_node': {'name': home_node},
                 'home_port': {
                     'name': home_port,
@@ -485,10 +482,16 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             }
             
             # Configurar data_protocol
-            interface.data_protocol = data_protocol
+            net_interface.data_protocol = data_protocol
+
+            # Configurar status-admin (enabled: true=up, false=down)
+            if status_admin:
+                net_interface.enabled = 'up'
+            else:
+                net_interface.enabled = 'down'
             
             # POST a la API
-            interface.post()
+            net_interface.post()
             
             print(f"[+] Interface '{lif_name}' created successfully")
             print(f"    - Home: {home_node}:{home_port}")
@@ -496,6 +499,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
