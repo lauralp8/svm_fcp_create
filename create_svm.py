@@ -615,8 +615,7 @@ def create_management_interface(svm_name, mgmt_config):
             'netmask': netmask
         }
         
-        # Configurar location (home_node y home_port con node)
-        # El failover policy se determina automáticamente por el service-policy
+        # Configurar location (home_node, home_port y auto_revert)
         interface.location = {
             'home_node': {'name': home_node},
             'home_port': {
@@ -626,11 +625,15 @@ def create_management_interface(svm_name, mgmt_config):
             'auto_revert': auto_revert
         }
         
-        # Configurar service policy (determina automáticamente el failover policy)
+        # Configurar service policy
         interface.service_policy = {'name': service_policy}
         
         # Configurar enabled (status-admin: up=true, down=false)
         interface.enabled = status_admin
+        
+        # Nota: firewall_policy está DEPRECATED en ONTAP moderno
+        # El service_policy controla el acceso, pero se puede configurar si es necesario
+        # Nota: failover_policy normalmente lo determina el service_policy automáticamente
         
         # POST a la API
         interface.post()
