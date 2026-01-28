@@ -99,7 +99,7 @@ def connect_to_cluster(cluster_config):
             cluster_config['host'],
             username=cluster_config['username'],
             password=cluster_config['password'],
-            verify=False
+            verify=False # Desactivar verificación SSL (entorno laboratorio)
         )
         
         # Verificar acceso haciendo una consulta al cluster
