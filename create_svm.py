@@ -436,7 +436,7 @@ def configure_protocols(svm_config):
 
 def create_network_interfaces(svm_name, net_interfaces_config):
     """
-    Crea network interfaces (LIFs) usando la API REST de ONTAP
+    Crea network interfaces (LIFs) usando API REST de ONTAP
 
     Args:
         svm_name: Nombre de la SVM
