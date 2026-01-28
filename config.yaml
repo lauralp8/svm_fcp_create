@@ -26,7 +26,7 @@ svm:
   # Configuración de protocolos (true = allowed, false = not allowed)
   protocols:
     cifs: false
-    nfs: false
+    nfs: true
     ndmp: false
     s3: false
     fcp: true
