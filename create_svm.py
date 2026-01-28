@@ -355,93 +355,6 @@ def fcp_create(svm_config):
         return False
 
 
-def fcp_protocol(svm_config):
-    """
-    Gestiona los protocolos de la SVM añadiendo y eliminando según configuración
-    
-    Basado en los comandos:
-    - vserver add-protocols -vserver <name> -protocols <protocolo1,protocolo2,...>
-    - vserver remove-protocols -vserver <name> -protocols <protocolo1,protocolo2,...>
-    
-    La función primero elimina los protocolos especificados en 'remove_protocols_list'
-    y luego añade los especificados en 'add_protocols_list', evitando duplicados.
-    
-    Args:
-        svm_config: Diccionario con la configuración de la SVM del config.yaml
-                    Debe contener 'name', 'add_protocols_list', 'remove_protocols_list'
-    
-    Returns:
-        bool: True si se configuraron exitosamente, False si hubo error
-    """
-    try:
-        # Extraer nombre de la SVM del config
-        svm_name = svm_config.get('name')
-        
-        # Extraer listas de protocolos desde config.yaml
-        add_protocols = svm_config.get('add_protocols_list', [])
-        remove_protocols = svm_config.get('remove_protocols_list', [])
-        
-        print(f"\n[*] Managing protocols on SVM: {svm_name}")
-        
-        # Buscar la SVM existente
-        svm = Svm.find(name=svm_name)
-        if not svm:
-            print(f"[ERROR] SVM '{svm_name}' not found")
-            return False
-        
-        # Obtener la SVM completa con sus protocolos actuales
-        svm.get()
-        
-        # Obtener lista de protocolos actuales (o lista vacía si no tiene)
-        # El getattr evita AttributeError si allowed_protocols no existe
-        current_protocols = getattr(svm, 'allowed_protocols', []) or []
-        
-        print(f"[*] Current protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
-        
-        # Paso 1: Eliminar protocolos especificados
-        if remove_protocols:
-            print(f"[*] Removing protocols: {', '.join(remove_protocols)}")
-            # Filtrar la lista actual eliminando los que están en remove_protocols
-            current_protocols = [p for p in current_protocols if p not in remove_protocols]
-        
-        # Paso 2: Añadir nuevos protocolos
-        if add_protocols:
-            print(f"[*] Adding protocols: {', '.join(add_protocols)}")
-            # Añadir los nuevos protocolos evitando duplicados con set()
-            current_protocols = list(set(current_protocols + add_protocols))
-        
-        # Actualizar la SVM con la nueva lista de protocolos
-        svm.allowed_protocols = current_protocols
-        
-        print(f"[*] Applying protocol configuration...")
-        svm.patch()
-        
-        print(f"[+] Protocols configured successfully!")
-        print(f"[*] Final protocols: {', '.join(current_protocols) if current_protocols else 'None'}")
-        
-        return True
-    
-    except NetAppRestError as error:
-        print(f"[ERROR] NetApp API error during protocol management")
-        print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        if error.status_code == 404:
-            print(f"[ERROR] SVM '{svm_name}' not found")
-        elif error.status_code == 400:
-            print(f"[ERROR] Bad request - Invalid protocol names")
-            print(f"[ERROR] Valid protocols: nfs, cifs, fcp, iscsi, nvme, s3, ndmp")
-        else:
-            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        
-        return False
-    
-    except Exception as e:
-        print(f"[ERROR] Unexpected error during protocol management: {type(e).__name__}")
-        print(f"[ERROR] Details: {str(e)}")
-        return False
-
-
-
 
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
@@ -479,13 +392,6 @@ if fcp_create(config_data['svm']):
     print("\n[SUCCESS] FCP service creation completed!")
 else:
     print("\n[FAILED] FCP service creation failed")
-    exit(1)
-
-# Gestionar protocolos de la SVM (añadir y eliminar)
-if fcp_protocol(config_data['svm']):
-    print("\n[SUCCESS] Protocol configuration completed!")
-else:
-    print("\n[FAILED] Protocol configuration failed")
     exit(1)
 
 
