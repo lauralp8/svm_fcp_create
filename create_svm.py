@@ -647,65 +647,6 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
-        # Mostrar configuración obtenida del cluster
-        print(f"\n{'='*80}")
-        print(f"COGIDO DEL CLUSTER")
-        print(f"Equivalente a: network interface show -vserver {svm_name} -lif {lif} -instance")
-        print(f"{'='*80}")
-        
-        try:
-            # Obtener la interfaz recién creada del cluster
-            interfaces = IpInterface.get_collection(
-                **{'svm.name': svm_name, 'name': lif}
-            )
-            
-            for iface in interfaces:
-                # Obtener detalles completos
-                iface.get()
-                
-                print(f"\nLIF: {iface.name}")
-                print(f"  SVM: {iface.svm.name}")
-                
-                # IP Information
-                if hasattr(iface, 'ip') and iface.ip:
-                    print(f"  IP Address: {iface.ip.address}")
-                    print(f"  Netmask: {iface.ip.netmask}")
-                
-                # Location information
-                if hasattr(iface, 'location') and iface.location:
-                    print(f"  Home Node: {iface.location.home_node.name}")
-                    print(f"  Home Port: {iface.location.home_port.name}")
-                    print(f"  Current Node: {iface.location.node.name if hasattr(iface.location, 'node') else 'N/A'}")
-                    print(f"  Current Port: {iface.location.port.name if hasattr(iface.location, 'port') else 'N/A'}")
-                    print(f"  Auto Revert: {iface.location.auto_revert}")
-                    
-                    if hasattr(iface.location, 'failover'):
-                        print(f"  Failover Policy: {iface.location.failover}")
-                    
-                    if hasattr(iface.location, 'broadcast_domain'):
-                        print(f"  Broadcast Domain: {iface.location.broadcast_domain.name}")
-                    
-                    if hasattr(iface.location, 'failover_group'):
-                        print(f"  Failover Group: {iface.location.failover_group.name}")
-                
-                # Service policy
-                if hasattr(iface, 'service_policy') and iface.service_policy:
-                    print(f"  Service Policy: {iface.service_policy.name}")
-                
-                # State and operational info
-                print(f"  Enabled (status-admin): {iface.enabled}")
-                if hasattr(iface, 'state'):
-                    print(f"  Operational State: {iface.state}")
-                
-                # UUID
-                if hasattr(iface, 'uuid'):
-                    print(f"  UUID: {iface.uuid}")
-                
-        except Exception as e:
-            print(f"[WARNING] Could not retrieve interface details: {str(e)}")
-        
-        print(f"{'='*80}\n")
-        
         return True
     
     except NetAppRestError as error:
