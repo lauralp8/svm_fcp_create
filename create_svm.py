@@ -510,74 +510,9 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         return False
 
 
-def show_network_interfaces(svm_name, lif_names):
-    """
-    Muestra información de las network interfaces creadas
-    
-    API: GET /api/network/fc/interfaces
-    Equivalente CLI: network interface show -vserver <svm> -lif <name>
-    
-    Args:
-        svm_name: Nombre de la SVM
-        lif_names: Lista de nombres de LIFs a mostrar
-    
-    Returns:
-        bool: True si se consultó exitosamente
-    """
-    try:
-        if not lif_names:
-            return True
-        
-        print(f"\n[*] Showing network interfaces for SVM: {svm_name}")
-        print(f"{'='*80}")
-        
-        for lif_name in lif_names:
-            # GET usando la API REST con filtros
-            interfaces = FcInterface.get_collection(
-                **{'svm.name': svm_name, 'name': lif_name}
-            )
-            
-            for interface in interfaces:
-                # Obtener detalles completos del objeto
-                interface.get()
-                
-                print(f"\nLIF: {interface.name}")
-                print(f"  SVM: {interface.svm.name}")
-                print(f"  Home Node: {interface.location.home_node.name}")
-                print(f"  Home Port: {interface.location.home_port.name}")
-                print(f"  Data Protocol: {interface.data_protocol if hasattr(interface, 'data_protocol') else 'fcp'}")
-                print(f"  State: {interface.state if hasattr(interface, 'state') else 'N/A'}")
-                if hasattr(interface, 'uuid'):
-                    print(f"  UUID: {interface.uuid}")
-                if hasattr(interface, 'wwpn'):
-                    print(f"  WWPN: {interface.wwpn}")
-        
-        print(f"{'='*80}")
-        return True
-    
-    except NetAppRestError as error:
-        print(f"[ERROR] NetApp API error")
-        print(f"[ERROR] HTTP Status: {error.status_code}")
-        print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        return False
-    
-    except Exception as e:
-        print(f"[ERROR] Unexpected error: {type(e).__name__}")
-        print(f"[ERROR] Details: {str(e)}")
-        return False
-
-
 def create_management_interface(svm_name, mgmt_config):
     """
     Crea una interfaz de management (LIF) usando la API REST de ONTAP
-    
-    API: POST /api/network/ip/interfaces
-    Basado en: https://library.netapp.com/ecmdocs/ECMLP3351667/html/resources/ip_interface.html
-    
-    Equivalente CLI: network interface create -vserver <svm> -lif <name> 
-                     -service-policy <policy> -address <ip> -netmask <mask>
-                     -home-node <node> -home-port <port> -status-admin <up|down>
-                     -auto-revert <true|false> -failover-group <group>
     
     Args:
         svm_name: Nombre de la SVM
@@ -587,11 +522,12 @@ def create_management_interface(svm_name, mgmt_config):
         bool: True si se creó exitosamente
     """
     try:
+        # Validar que haya configuración para la interfaz de management
         if not mgmt_config:
             print(f"[WARNING] No management interface configured")
             return True
         
-        # Extraer todos los parámetros del config.yaml (sin valores por defecto hardcodeados)
+        # Extraer todos los parámetros del config.yaml 
         lif = mgmt_config.get('lif')
         service_policy = mgmt_config.get('service_policy')
         address = mgmt_config.get('address')
@@ -613,6 +549,8 @@ def create_management_interface(svm_name, mgmt_config):
         print(f"[*] Address: {address}/{netmask}")
         print(f"[*] Home: {home_node}:{home_port}")
         print(f"[*] Auto Revert: {auto_revert}")
+        print(f"[*] Status Admin: {status_admin}")
+
         if failover_group:
             print(f"[*] Failover Group: {failover_group}")
         
@@ -621,7 +559,7 @@ def create_management_interface(svm_name, mgmt_config):
         interface.name = lif
         interface.svm = {'name': svm_name}
         
-        # Configurar dirección IP y máscara
+        # Configurar dirección IP y máscara 
         interface.ip = {
             'address': address,
             'netmask': netmask
@@ -654,6 +592,7 @@ def create_management_interface(svm_name, mgmt_config):
         
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
@@ -722,11 +661,6 @@ else:
 net_interfaces = config_data.get('net_interfaces', [])
 if create_network_interfaces(config_data['svm']['name'], net_interfaces):
     print("\n[SUCCESS] Network interfaces creation completed!")
-    
-    # Mostrar las interfaces creadas
-    lif_names = [iface.get('lif') for iface in net_interfaces if iface.get('lif')]
-    if lif_names:
-        show_network_interfaces(config_data['svm']['name'], lif_names)
 else:
     print("\n[FAILED] Network interfaces creation failed")
     exit(1)
