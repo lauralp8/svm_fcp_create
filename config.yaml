@@ -4,7 +4,7 @@ cluster:
   password: Netapp1!
 
 svm: 
-  name: ES_PRUEBA
+  name: nuevo
   ipspace: Default  
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
