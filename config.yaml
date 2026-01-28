@@ -21,7 +21,7 @@ svm:
   is_space_enforcement_logical: true
   
   # Parámetros FCP
-  fcp_status_admin: true  # true = up, false = down
+  fcp_status_admin: up  # true = up, false = down
   
   # Configuración de protocolos (true = allowed, false = not allowed)
   protocols:
@@ -39,19 +39,19 @@ net_interfaces:
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 1b
-    status_admin: false  # true = up, false = down
+    status_admin: down  # true = up, false = down
   
   - lif: lif_2_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0b
-    status_admin: true # true = up, false = down
+    status_admin: up # true = up, false = down
   
   - lif: lif_3_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0a
-    status_admin: true # true = up, false = down
+    status_admin: up # true = up, false = down
 
 # Management Interface - Interfaz de gestión de la SVM
 # NOTA IMPORTANTE sobre failover_policy y firewall_policy:
@@ -72,7 +72,7 @@ mgmt_interface:
   netmask: 255.255.255.0
   home_node: cluster1-02
   home_port: e0c
-  status_admin: true  # true = up, false = down
+  status_admin: up  # true = up, false = down
   auto_revert: false
   failover_group: Default
 

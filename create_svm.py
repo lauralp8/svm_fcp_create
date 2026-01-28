@@ -322,8 +322,14 @@ def fcp_create(svm_config):
         # Extraer nombre de la SVM del config
         svm_name = svm_config.get('name')
         
-        # Extraer status_admin del config.yaml 
-        fcp_status_admin = svm_config.get('fcp_status_admin', False)
+        # Extraer status_admin del config.yaml (viene como "up" o "down")
+        fcp_status_admin_value = svm_config.get('fcp_status_admin', 'down')
+        
+        # Convertir "up"/"down" a True/False
+        if fcp_status_admin_value == 'up':
+            fcp_status_admin = True
+        else:
+            fcp_status_admin = False
         
         print(f"\n[*] Creating FCP service on SVM: {svm_name}")
         
@@ -459,7 +465,13 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             data_protocol = interface_config.get('data_protocol')
             home_node = interface_config.get('home_node')
             home_port = interface_config.get('home_port')
-            status_admin = interface_config.get('status_admin', False)
+            status_admin_value = interface_config.get('status_admin', 'down')
+            
+            # Convertir "up"/"down" a True/False
+            if status_admin_value == 'up':
+                status_admin = True
+            else:
+                status_admin = False
             
             if not all([lif_name, home_node, home_port]):
                 print(f"[ERROR] Interface #{idx}: Missing required fields (lif, home_node, home_port)")
@@ -534,9 +546,15 @@ def create_management_interface(svm_name, mgmt_config):
         netmask = mgmt_config.get('netmask')
         home_node = mgmt_config.get('home_node')
         home_port = mgmt_config.get('home_port')
-        status_admin = mgmt_config.get('status_admin', True)
+        status_admin_value = mgmt_config.get('status_admin', 'up')
         auto_revert = mgmt_config.get('auto_revert', False)
         failover_group = mgmt_config.get('failover_group')
+        
+        # Convertir "up"/"down" a True/False
+        if status_admin_value == 'up':
+            status_admin = True
+        else:
+            status_admin = False
         
         # Validar campos obligatorios
         if not all([lif, service_policy, address, netmask, home_node, home_port]):
