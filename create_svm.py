@@ -629,6 +629,7 @@ if not cluster_connection(config_data['cluster']):
 
 print("\n[+] All pre-checks passed - Ready to create SVM")
 
+# FCP SVM CREATION STEPS
 # Crear la SVM
 if create_svm(config_data['svm']):
     print("\n[SUCCESS] SVM creation completed!")
@@ -665,16 +666,3 @@ else:
     print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
-'''
-# Crear management interface
-mgmt_interface = config_data.get('mgmt_interface')
-if create_management_interface(config_data['svm']['name'], mgmt_interface):
-    print("\n[SUCCESS] Management interface creation completed!")
-else:
-    print("\n[FAILED] Management interface creation failed")
-    exit(1)
-
-
-print("\n[+] Script completed successfully!")
-
-'''
