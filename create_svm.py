@@ -367,14 +367,6 @@ def configure_protocols(svm_config):
     """
     Configura los protocolos permitidos en la SVM (allowed=true/false)
     
-    Equivale a:
-    - vserver remove-protocols -vserver <name> -protocols <lista>
-    - vserver add-protocols -vserver <name> -protocols <lista>
-    
-    Basado en la API REST:
-    PATCH /api/svm/svms/{uuid} con payload:
-    {"cifs":{"allowed":true/false}, "nfs":{"allowed":true/false}, etc.}
-    
     Args:
         svm_config: Diccionario con la configuración de la SVM del config.yaml
                     Debe incluir la sección 'protocols' con cada protocolo y su valor
@@ -389,6 +381,7 @@ def configure_protocols(svm_config):
         # Extraer diccionario de protocolos del config.yaml
         protocols_config = svm_config.get('protocols', {})
         
+        # Validar que haya protocolos para configurar
         if not protocols_config:
             print(f"[WARNING] No protocol configuration found in config.yaml")
             return True
@@ -422,6 +415,7 @@ def configure_protocols(svm_config):
         print(f"[+] Protocol configuration applied successfully!")
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during protocol configuration")
         print(f"[ERROR] HTTP Status: {error.status_code}")
