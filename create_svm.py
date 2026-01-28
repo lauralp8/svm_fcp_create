@@ -1,8 +1,9 @@
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Svm, FcpService, FcInterface, IpInterface
+from netapp_ontap.resources import Cluster, Svm, FcpService, FcInterface, IpInterface
 import yaml
 
-print("Starting SVM creation script...")
+print("\nCREATE SVM SCRIPT USING NETAPP ONTAP PYTHON CLIENT LIBRARY")
+print("[*] Starting SVM creation script...")
 
 def config_loader(path="config.yaml"):
     """
@@ -18,7 +19,7 @@ def config_loader(path="config.yaml"):
         dict: Diccionario con la configuración cargada, o None si falla
     """
     try:
-        print(f"Config.yaml loader: {path}")
+        print(f"[+] Config.yaml loader: {path}")
         
         # Abrir y leer el contenido del archivo YAML
         with open(path, 'r', encoding='utf-8') as file:
@@ -40,10 +41,10 @@ def config_loader(path="config.yaml"):
             print(f"[ERROR] Incomplete configuration: missing 'svm' section")
             return None
         
-        print(f"Configuration loaded successfully")
+        print(f"[+] Configuration loaded successfully")
 
         # Mostrar resumen de la configuración cargada
-        print(f"[+]Target cluster: {config_data['cluster'].get('host', 'N/A')}")
+        print(f"[+] Target cluster: {config_data['cluster'].get('host', 'N/A')}")
         print(f"[+] SVM to create: {config_data['svm'].get('name', 'N/A')}")
         
         return config_data
@@ -99,21 +100,20 @@ def connect_to_cluster(cluster_config):
             cluster_config['host'],
             username=cluster_config['username'],
             password=cluster_config['password'],
-            verify=False # Desactivar verificación SSL (entorno laboratorio)
+            verify=True # ** Cambiar a False si se usan certificados auto-firmados **
         )
         
         # Verificar acceso haciendo una consulta al cluster
-        from netapp_ontap.resources import Cluster
         cluster_info = Cluster()
         cluster_info.get()
         
         print(f"[+] Connection successful!")
         print(f"[+] Cluster name: {cluster_info.name}")
         print(f"[+] ONTAP version: {cluster_info.version.full}")
-        print(f"[+] Cluster UUID: {cluster_info.uuid}")
-        
+
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp REST API error")
         print(f"[ERROR] HTTP status: {error.status_code}")
