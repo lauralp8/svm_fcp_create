@@ -564,19 +564,19 @@ def show_network_interfaces(svm_name, lif_names):
 
 def create_management_interface(svm_name, mgmt_config):
     """
-    Crea la LIF de management usando la API REST de ONTAP
+    Crea la interfaz de management (LIF) usando la API REST de ONTAP
     
     API: POST /api/network/ip/interfaces
     Equivalente CLI: network interface create -vserver <svm> -lif <name> 
                      -service-policy default-management -address <ip> 
                      -netmask <mask> -home-node <node> -home-port <port> 
-                     -status-admin <up|down> -failover-policy <policy> 
-                     -firewall-policy <policy> -auto-revert <true|false> 
+                     -status-admin <up|down> -failover-policy <policy>
+                     -firewall-policy <policy> -auto-revert <true|false>
                      -failover-group <group>
     
     Args:
         svm_name: Nombre de la SVM
-        mgmt_config: Diccionario con la configuración de la interfaz de management
+        mgmt_config: Diccionario con configuración de la interfaz de management
     
     Returns:
         bool: True si se creó exitosamente
@@ -586,7 +586,6 @@ def create_management_interface(svm_name, mgmt_config):
             print(f"[WARNING] No management interface configured")
             return True
         
-        # Extraer parámetros de la configuración
         lif_name = mgmt_config.get('lif')
         address = mgmt_config.get('address')
         netmask = mgmt_config.get('netmask')
@@ -597,11 +596,10 @@ def create_management_interface(svm_name, mgmt_config):
         failover_policy = mgmt_config.get('failover_policy', 'system-defined')
         firewall_policy = mgmt_config.get('firewall_policy', 'mgmt')
         auto_revert = mgmt_config.get('auto_revert', False)
-        failover_group = mgmt_config.get('failover_group', 'Default')
+        failover_group = mgmt_config.get('failover_group')
         
-        # Validar parámetros obligatorios
         if not all([lif_name, address, netmask, home_node, home_port]):
-            print(f"[ERROR] Missing required fields for management interface")
+            print(f"[ERROR] Management interface: Missing required fields")
             return False
         
         print(f"\n[*] Creating management interface: {lif_name}")
@@ -611,7 +609,7 @@ def create_management_interface(svm_name, mgmt_config):
         interface.name = lif_name
         interface.svm = {'name': svm_name}
         
-        # Configurar dirección IP
+        # Configurar dirección IP y máscara
         interface.ip = {
             'address': address,
             'netmask': netmask
@@ -631,15 +629,14 @@ def create_management_interface(svm_name, mgmt_config):
         # Configurar service policy
         interface.service_policy = {'name': service_policy}
         
-        # Configurar enabled (status-admin)
+        # Configurar enabled (status-admin: up=true, down=false)
         interface.enabled = status_admin
         
         # POST a la API
         interface.post()
         
         print(f"[+] Management interface '{lif_name}' created successfully")
-        print(f"    - IP Address: {address}")
-        print(f"    - Netmask: {netmask}")
+        print(f"    - IP Address: {address}/{netmask}")
         print(f"    - Home: {home_node}:{home_port}")
         print(f"    - Service Policy: {service_policy}")
         print(f"    - Failover Policy: {failover_policy}")

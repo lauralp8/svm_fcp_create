@@ -53,13 +53,13 @@ net_interfaces:
     home_port: 0b
     status_admin: true
 
-# Management Interface - LIF de gestión (solo una)
+# Management Interface - Solo una interfaz de gestión
 management_interface:
   lif: lif_fcp_mgmt
   address: 192.168.0.120
   netmask: 255.255.255.0
   home_node: cluster1-01
-  home_port: e0c
+  home_port: e0d
   status_admin: true  # true = up, false = down
   service_policy: default-management
   failover_policy: system-defined
