@@ -46,4 +46,10 @@ net_interfaces:
     home_node: cluster1-02
     home_port: 1b
     status_admin: true
+  
+  - lif: LIF3
+    data_protocol: fcp
+    home_node: cluster1-01
+    home_port: 0b
+    status_admin: true
 
