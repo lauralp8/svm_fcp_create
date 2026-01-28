@@ -562,6 +562,108 @@ def show_network_interfaces(svm_name, lif_names):
         return False
 
 
+def create_management_interface(svm_name, mgmt_config):
+    """
+    Crea una interfaz de management (LIF) usando la API REST de ONTAP
+    
+    API: POST /api/network/ip/interfaces
+    Basado en: https://library.netapp.com/ecmdocs/ECMLP3351667/html/resources/ip_interface.html
+    
+    Equivalente CLI: network interface create -vserver <svm> -lif <name> 
+                     -service-policy <policy> -address <ip> -netmask <mask>
+                     -home-node <node> -home-port <port> -status-admin <up|down>
+                     -auto-revert <true|false> -failover-group <group>
+    
+    Args:
+        svm_name: Nombre de la SVM
+        mgmt_config: Diccionario con configuración de la interfaz del config.yaml
+    
+    Returns:
+        bool: True si se creó exitosamente
+    """
+    try:
+        if not mgmt_config:
+            print(f"[WARNING] No management interface configured")
+            return True
+        
+        # Extraer todos los parámetros del config.yaml (sin valores por defecto hardcodeados)
+        lif = mgmt_config.get('lif')
+        service_policy = mgmt_config.get('service_policy')
+        address = mgmt_config.get('address')
+        netmask = mgmt_config.get('netmask')
+        home_node = mgmt_config.get('home_node')
+        home_port = mgmt_config.get('home_port')
+        status_admin = mgmt_config.get('status_admin', True)
+        auto_revert = mgmt_config.get('auto_revert', False)
+        failover_group = mgmt_config.get('failover_group')
+        
+        # Validar campos obligatorios
+        if not all([lif, service_policy, address, netmask, home_node, home_port]):
+            print(f"[ERROR] Management interface: Missing required fields")
+            print(f"[ERROR] Required: lif, service_policy, address, netmask, home_node, home_port")
+            return False
+        
+        print(f"\n[*] Creating management interface: {lif}")
+        print(f"[*] Service Policy: {service_policy}")
+        print(f"[*] Address: {address}/{netmask}")
+        print(f"[*] Home: {home_node}:{home_port}")
+        print(f"[*] Auto Revert: {auto_revert}")
+        if failover_group:
+            print(f"[*] Failover Group: {failover_group}")
+        
+        # Crear objeto IpInterface usando la API REST
+        interface = IpInterface()
+        interface.name = lif
+        interface.svm = {'name': svm_name}
+        
+        # Configurar dirección IP y máscara
+        interface.ip = {
+            'address': address,
+            'netmask': netmask
+        }
+        
+        # Configurar location (home_node, home_port, auto_revert)
+        interface.location = {
+            'home_node': {'name': home_node},
+            'home_port': {
+                'name': home_port,
+                'node': {'name': home_node}
+            },
+            'auto_revert': auto_revert
+        }
+        
+        # Configurar service policy
+        interface.service_policy = {'name': service_policy}
+        
+        # Configurar failover group si se especifica
+        if failover_group:
+            interface.location['failover_group'] = {'name': failover_group}
+        
+        # Configurar enabled (status-admin: up=true, down=false)
+        interface.enabled = status_admin
+        
+        # POST a la API
+        interface.post()
+        
+        print(f"[+] Management interface '{lif}' created successfully")
+        
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        if error.http_err_response and error.http_err_response.http_response:
+            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        else:
+            print(f"[ERROR] Details: {str(error)}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -618,6 +720,14 @@ if create_network_interfaces(config_data['svm']['name'], net_interfaces):
         show_network_interfaces(config_data['svm']['name'], lif_names)
 else:
     print("\n[FAILED] Network interfaces creation failed")
+    exit(1)
+
+# Crear management interface
+mgmt_interface = config_data.get('mgmt_interface')
+if create_management_interface(config_data['svm']['name'], mgmt_interface):
+    print("\n[SUCCESS] Management interface creation completed!")
+else:
+    print("\n[FAILED] Management interface creation failed")
     exit(1)
 
 

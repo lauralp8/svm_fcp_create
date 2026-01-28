@@ -53,6 +53,29 @@ net_interfaces:
     home_port: 0a
     status_admin: true
 
+# Management Interface - Interfaz de gestión de la SVM
+# NOTA IMPORTANTE sobre failover_policy y firewall_policy:
+# - Estos parámetros NO se incluyen porque la API REST los controla automáticamente
+#   a través del service_policy
+# - Cuando usas service_policy: default-management, ONTAP asigna automáticamente:
+#   * failover_policy: system-defined (equivale a broadcast_domain_only)
+#   * firewall_policy: mgmt (DEPRECATED - ya no se usa en ONTAP moderno)
+# - Estos valores NO son configurables directamente en la API REST moderna de ONTAP
+# - Para modificarlos necesitarías:
+#   1. Usar un service_policy diferente (ej: default-data-files, default-data-blocks)
+#   2. Crear un custom service policy con las políticas deseadas
+#   3. Modificar la interfaz después de crearla usando PATCH API
+mgmt_interface:
+  lif: management
+  service_policy: default-management
+  address: 192.168.0.120
+  netmask: 255.255.255.0
+  home_node: cluster1-01
+  home_port: e0a
+  status_admin: true  # true = up, false = down
+  auto_revert: false
+  failover_group: Default
+
 
 
 
