@@ -354,6 +354,81 @@ def fcp_create(svm_config):
         print(f"[ERROR] Details: {str(e)}")
         return False
 
+def configure_protocols(svm_config):
+    """
+    Configura los protocolos permitidos en la SVM (allowed=true/false)
+    
+    Equivale a:
+    - vserver remove-protocols -vserver <name> -protocols <lista>
+    - vserver add-protocols -vserver <name> -protocols <lista>
+    
+    Basado en la API REST:
+    PATCH /api/svm/svms/{uuid} con payload:
+    {"cifs":{"allowed":true/false}, "nfs":{"allowed":true/false}, etc.}
+    
+    Args:
+        svm_config: Diccionario con la configuración de la SVM del config.yaml
+                    Debe incluir la sección 'protocols' con cada protocolo y su valor
+    
+    Returns:
+        bool: True si se configuró exitosamente, False si hubo error
+    """
+    try:
+        # Extraer nombre de la SVM del config
+        svm_name = svm_config.get('name')
+        
+        # Extraer diccionario de protocolos del config.yaml
+        protocols_config = svm_config.get('protocols', {})
+        
+        if not protocols_config:
+            print(f"[WARNING] No protocol configuration found in config.yaml")
+            return True
+        
+        print(f"\n[*] Configuring protocols for SVM: {svm_name}")
+        
+        # Buscar la SVM
+        svm = Svm.find(name=svm_name)
+        if not svm:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+            return False
+        
+        # Obtener el objeto SVM completo
+        svm_obj = Svm(uuid=svm.uuid)
+        
+        # Configurar cada protocolo según el config.yaml
+        for protocol, allowed in protocols_config.items():
+            # Convertir el nombre del protocolo a minúsculas por si acaso
+            protocol_name = protocol.lower()
+            
+            # Configurar el protocolo con el valor allowed
+            setattr(svm_obj, protocol_name, {'allowed': allowed})
+            
+            status_text = "enabled" if allowed else "disabled"
+            print(f"[*] Protocol {protocol_name.upper()}: {status_text}")
+        
+        # Aplicar cambios a la SVM
+        print(f"[*] Applying protocol changes...")
+        svm_obj.patch()
+        
+        print(f"[+] Protocol configuration applied successfully!")
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during protocol configuration")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        if error.status_code == 400:
+            print(f"[ERROR] Bad request - Invalid protocol configuration")
+            print(f"[ERROR] Check that protocol names are valid")
+        else:
+            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during protocol configuration: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
 
 
 # Cargar la configuración desde el archivo YAML
@@ -392,6 +467,13 @@ if fcp_create(config_data['svm']):
     print("\n[SUCCESS] FCP service creation completed!")
 else:
     print("\n[FAILED] FCP service creation failed")
+    exit(1)
+
+# Configurar protocolos permitidos en la SVM
+if configure_protocols(config_data['svm']):
+    print("\n[SUCCESS] Protocol configuration completed!")
+else:
+    print("\n[FAILED] Protocol configuration failed")
     exit(1)
 
 
