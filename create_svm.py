@@ -616,17 +616,17 @@ def create_management_interface(svm_name, mgmt_config):
         }
         
         # Configurar location (home_node y home_port con node)
+        # El failover policy se determina automáticamente por el service-policy
         interface.location = {
             'home_node': {'name': home_node},
             'home_port': {
                 'name': home_port,
                 'node': {'name': home_node}
             },
-            'auto_revert': auto_revert,
-            'failover': failover_policy
+            'auto_revert': auto_revert
         }
         
-        # Configurar service policy
+        # Configurar service policy (determina automáticamente el failover policy)
         interface.service_policy = {'name': service_policy}
         
         # Configurar enabled (status-admin: up=true, down=false)
