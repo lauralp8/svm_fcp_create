@@ -4,7 +4,7 @@ cluster:
   password: Netapp1!
 
 svm: 
-  name: svm_demo2
+  name: ES_PRUEBA
   ipspace: Default  
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
@@ -34,15 +34,15 @@ svm:
 
 # Network Interfaces - Se crea una interfaz por cada elemento de la lista
 net_interfaces:
-  - lif: SVMv2-cert-rhoso-san3000_1_N1
+  - lif: LIF1
     data_protocol: fcp
-    home_node: ALCAFFCERTI02-01
-    home_port: 2a
+    home_node: cluster1-01
+    home_port: 0a
     status_admin: true  # true = up, false = down
   
-  - lif: SVMv2-cert-rhoso-san3000_1_N2
+  - lif: LIF2
     data_protocol: fcp
-    home_node: ALCAFFCERTI02-01
-    home_port: 0a
+    home_node: cluster1-02
+    home_port: 0b
     status_admin: true
 
