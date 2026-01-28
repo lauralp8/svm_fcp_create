@@ -592,11 +592,14 @@ def create_management_interface(svm_name, mgmt_config):
         home_node = mgmt_config.get('home_node')
         home_port = mgmt_config.get('home_port')
         status_admin = mgmt_config.get('status_admin', True)
-        service_policy = mgmt_config.get('service_policy', 'default-management')
-        failover_policy = mgmt_config.get('failover_policy', 'system-defined')
-        firewall_policy = mgmt_config.get('firewall_policy', 'mgmt')
+        service_policy = mgmt_config.get('service_policy')
         auto_revert = mgmt_config.get('auto_revert', False)
-        failover_group = mgmt_config.get('failover_group', 'Default')
+        
+        # Nota: failover_policy y firewall_policy están controlados por service_policy en ONTAP moderno
+        # Se leen del config pero la API los determina automáticamente
+        failover_policy = mgmt_config.get('failover_policy', 'determined by service-policy')
+        firewall_policy = mgmt_config.get('firewall_policy', 'determined by service-policy')
+        failover_group = mgmt_config.get('failover_group')
         
         if not all([lif_name, address, netmask, home_node, home_port]):
             print(f"[ERROR] Management interface: Missing required fields")
