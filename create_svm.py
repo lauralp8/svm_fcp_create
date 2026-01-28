@@ -1,5 +1,5 @@
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Svm, FcpService
+from netapp_ontap.resources import Svm, FcpService, IpInterface
 import yaml
 
 print("Starting SVM creation script...")
@@ -431,6 +431,136 @@ def configure_protocols(svm_config):
         return False
 
 
+def create_network_interfaces(svm_name, net_interfaces_config):
+    """
+    Crea network interfaces (LIFs) usando la API REST de ONTAP
+    
+    API: POST /api/network/ip/interfaces
+    Equivalente CLI: network interface create -vserver <svm> -lif <name> 
+                     -data-protocol <protocol> -home-node <node> 
+                     -home-port <port> -status-admin <up|down>
+    
+    Args:
+        svm_name: Nombre de la SVM
+        net_interfaces_config: Lista de diccionarios con configuración de interfaces
+    
+    Returns:
+        bool: True si todas se crearon exitosamente
+    """
+    try:
+        if not net_interfaces_config:
+            print(f"[WARNING] No network interfaces configured")
+            return True
+        
+        print(f"\n[*] Creating {len(net_interfaces_config)} network interface(s) for SVM: {svm_name}")
+        
+        for idx, interface_config in enumerate(net_interfaces_config, start=1):
+            lif_name = interface_config.get('lif')
+            data_protocol = interface_config.get('data_protocol')
+            home_node = interface_config.get('home_node')
+            home_port = interface_config.get('home_port')
+            status_admin = interface_config.get('status_admin', True)
+            
+            if not all([lif_name, home_node, home_port]):
+                print(f"[ERROR] Interface #{idx}: Missing required fields (lif, home_node, home_port)")
+                return False
+            
+            print(f"\n[*] Creating interface #{idx}: {lif_name}")
+            
+            # Crear objeto IpInterface usando la API REST
+            interface = IpInterface()
+            interface.name = lif_name
+            interface.svm = {'name': svm_name}
+            
+            # Configurar location (home_node y home_port)
+            interface.location = {
+                'home_node': {'name': home_node},
+                'home_port': {'name': home_port}
+            }
+            
+            # Configurar service_policy para FCP (requerido por la API)
+            if data_protocol:
+                interface.service_policy = {'name': 'default-data-blocks'}
+            
+            # Configurar enabled (status-admin: up=true, down=false)
+            interface.enabled = status_admin
+            
+            # POST a la API
+            interface.post()
+            
+            print(f"[+] Interface '{lif_name}' created successfully")
+            print(f"    - Home: {home_node}:{home_port}")
+            print(f"    - Status: {'up' if status_admin else 'down'}")
+        
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
+def show_network_interfaces(svm_name, lif_names):
+    """
+    Muestra información de las network interfaces creadas
+    
+    API: GET /api/network/ip/interfaces
+    Equivalente CLI: network interface show -vserver <svm> -lif <name>
+    
+    Args:
+        svm_name: Nombre de la SVM
+        lif_names: Lista de nombres de LIFs a mostrar
+    
+    Returns:
+        bool: True si se consultó exitosamente
+    """
+    try:
+        if not lif_names:
+            return True
+        
+        print(f"\n[*] Showing network interfaces for SVM: {svm_name}")
+        print(f"{'='*80}")
+        
+        for lif_name in lif_names:
+            # GET usando la API REST con filtros
+            interfaces = IpInterface.get_collection(
+                **{'svm.name': svm_name, 'name': lif_name}
+            )
+            
+            for interface in interfaces:
+                # Obtener detalles completos del objeto
+                interface.get()
+                
+                print(f"\nLIF: {interface.name}")
+                print(f"  SVM: {interface.svm.name}")
+                print(f"  Home Node: {interface.location.home_node.name}")
+                print(f"  Home Port: {interface.location.home_port.name}")
+                print(f"  Enabled: {interface.enabled}")
+                print(f"  State: {interface.state if hasattr(interface, 'state') else 'N/A'}")
+                if hasattr(interface, 'uuid'):
+                    print(f"  UUID: {interface.uuid}")
+        
+        print(f"{'='*80}")
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -474,6 +604,19 @@ if configure_protocols(config_data['svm']):
     print("\n[SUCCESS] Protocol configuration completed!")
 else:
     print("\n[FAILED] Protocol configuration failed")
+    exit(1)
+
+# Crear network interfaces
+net_interfaces = config_data.get('net_interfaces', [])
+if create_network_interfaces(config_data['svm']['name'], net_interfaces):
+    print("\n[SUCCESS] Network interfaces creation completed!")
+    
+    # Mostrar las interfaces creadas
+    lif_names = [iface.get('lif') for iface in net_interfaces if iface.get('lif')]
+    if lif_names:
+        show_network_interfaces(config_data['svm']['name'], lif_names)
+else:
+    print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
 

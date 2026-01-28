@@ -10,7 +10,7 @@ svm:
   language: c.utf_8
   security_style: unix
 
-  # Se crea automáticamente. Parece que no es necesario especificarlo
+  # Se crea automáticamente. Parece q no es necesario especificarlo
   # root_volume: svm_1_cluster_root
 
   # Parámetros de modificación
@@ -32,5 +32,17 @@ svm:
     fcp: true
     iscsi: true
 
-
+# Network Interfaces - Se crea una interfaz por cada elemento de la lista
+net_interfaces:
+  - lif: SVMv2-cert-rhoso-san3000_1_N1
+    data_protocol: fcp
+    home_node: ALCAFFCERTI02-01
+    home_port: 2a
+    status_admin: true  # true = up, false = down
+  
+  - lif: SVMv2-cert-rhoso-san3000_1_N2
+    data_protocol: fcp
+    home_node: ALCAFFCERTI02-01
+    home_port: 0a
+    status_admin: true
 
