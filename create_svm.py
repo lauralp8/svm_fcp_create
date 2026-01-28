@@ -70,7 +70,7 @@ def config_loader(path="config.yaml"):
         return None
 
 
-def connect_to_cluster(cluster_config):
+def cluster_connection(cluster_config):
     """
     Establece conexión con la cabina NetApp ONTAP y verifica acceso
     
@@ -153,7 +153,7 @@ def connect_to_cluster(cluster_config):
 
 def create_svm(svm_config):
     """
-    Crea una SVM en NetApp ONTAP usando parámetros del config.yaml
+    Crea una SVM en NetApp ONTAP con los parámetros del config.yaml
     
     Args:
         svm_config: Diccionario con la configuración de la SVM desde config.yaml
@@ -169,7 +169,8 @@ def create_svm(svm_config):
         security_style = svm_config.get('security_style')
         aggregate = svm_config.get('aggregate')
         
-        # Validar que exista el nombre (obligatorio)
+        # VALIDACIONES
+        # Validar que exista el valor obligatorio 'name'
         if not svm_name:
             print(f"[ERROR] 'name' is required in svm configuration")
             return False
@@ -180,13 +181,15 @@ def create_svm(svm_config):
         print(f"[*] Checking if SVM already exists...")
         existing_svm = Svm.find(name=svm_name)
         if existing_svm:
-            print(f"[ERROR] SVM '{svm_name}' already exists with UUID: {existing_svm.uuid}")
+            print(f"[ERROR] SVM '{svm_name}' already exists on the cluster")
             return False
         
+        # SVM
         # Crear objeto SVM
         new_svm = Svm()
         new_svm.name = svm_name
         
+        # DATOS ENVIADOS AL CLÚSTER DESDE EL CONFIG.YAML
         # Configurar IPspace 
         if ipspace:
             new_svm.ipspace = {'name': ipspace}
@@ -213,6 +216,7 @@ def create_svm(svm_config):
         print(f"[+] SVM '{svm_name}' created successfully!")
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during SVM creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
@@ -682,7 +686,7 @@ else:
 
 # CLUSTER CONNECTION CHECK
 # Establecer conexión y verificar acceso a la cabina NetApp
-if not connect_to_cluster(config_data['cluster']):
+if not cluster_connection(config_data['cluster']):
     print("\n[ERROR] Failed to connect to NetApp cluster")
     print("[ERROR] Fix connection issues before continuing")
     exit(1)
