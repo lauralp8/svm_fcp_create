@@ -355,6 +355,80 @@ def fcp_create(svm_config):
         return False
 
 
+def remove_protocols(svm_name, protocols):
+    """
+    Elimina protocolos de una SVM existente
+    
+    Basado en: vserver remove-protocols -vserver <name> -protocols <protocol_list>
+    
+    Args:
+        svm_name: Nombre de la SVM
+        protocols: Lista de protocolos a eliminar (ejemplo: ['cifs', 'nfs', 'ndmp', 's3'])
+                   o string separado por comas (ejemplo: 'cifs,nfs,ndmp,s3')
+    
+    Returns:
+        bool: True si se eliminaron exitosamente, False si hubo error
+    """
+    try:
+        # Convertir string a lista si es necesario
+        if isinstance(protocols, str):
+            protocols = [p.strip() for p in protocols.split(',')]
+        
+        print(f"\n[*] Removing protocols from SVM: {svm_name}")
+        print(f"[*] Protocols to remove: {', '.join(protocols)}")
+        
+        # Buscar la SVM
+        svm = Svm.find(name=svm_name)
+        if not svm:
+            print(f"[ERROR] SVM '{svm_name}' not found")
+            return False
+        
+        # Obtener la SVM completa para ver los protocolos actuales
+        svm.get()
+        
+        # Verificar los protocolos permitidos actuales
+        current_protocols = []
+        if hasattr(svm, 'allowed_protocols') and svm.allowed_protocols:
+            current_protocols = svm.allowed_protocols
+            print(f"[*] Current allowed protocols: {', '.join(current_protocols)}")
+        
+        # Filtrar los protocolos que NO se van a eliminar
+        remaining_protocols = [p for p in current_protocols if p not in protocols]
+        
+        if not remaining_protocols:
+            print(f"[WARNING] No protocols will remain after removal")
+        
+        # Actualizar la lista de protocolos permitidos
+        svm.allowed_protocols = remaining_protocols
+        
+        print(f"[*] Applying changes...")
+        svm.patch()
+        
+        print(f"[+] Protocols removed successfully!")
+        print(f"[*] Remaining protocols: {', '.join(remaining_protocols) if remaining_protocols else 'none'}")
+        
+        return True
+    
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during protocol removal")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        if error.status_code == 404:
+            print(f"[ERROR] SVM not found")
+        elif error.status_code == 400:
+            print(f"[ERROR] Bad request - Invalid parameters or protocols")
+            print(f"[ERROR] Valid protocols: cifs, nfs, fcp, iscsi, ndmp, s3, nvme")
+        else:
+            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during protocol removal: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
@@ -394,6 +468,14 @@ else:
     print("\n[FAILED] FCP service creation failed")
     exit(1)
 
+# Remover protocolos de la SVM
+protocols_to_remove = config_data['svm'].get('remove_protocols', [])
+if protocols_to_remove:
+    if remove_protocols(config_data['svm']['name'], protocols_to_remove):
+        print("\n[SUCCESS] Protocol removal completed!")
+    else:
+        print("\n[FAILED] Protocol removal failed")
+        exit(1)
 
 print("\n[+] Script completed successfully!")
 
