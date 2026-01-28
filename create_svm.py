@@ -484,11 +484,8 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             # Configurar data_protocol
             net_interface.data_protocol = data_protocol
 
-            # Configurar status-admin (enabled: true=up, false=down)
-            if status_admin:
-                net_interface.enabled = 'up'
-            else:
-                net_interface.enabled = 'down'
+            # Configurar status_admin para FC Interface
+            net_interface.enabled = status_admin
             
             # POST a la API
             net_interface.post()

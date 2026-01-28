@@ -45,13 +45,13 @@ net_interfaces:
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0b
-    status_admin: true
+    status_admin: true # true = up, false = down
   
   - lif: LIFFF
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0a
-    status_admin: true
+    status_admin: true # true = up, false = down
 
 # Management Interface - Interfaz de gestión de la SVM
 # NOTA IMPORTANTE sobre failover_policy y firewall_policy:
