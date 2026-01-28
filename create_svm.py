@@ -1,5 +1,5 @@
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Svm, FcpService
+from netapp_ontap.resources import Svm, FcpService, IpInterface
 import yaml
 
 print("Starting SVM creation script...")
@@ -431,6 +431,113 @@ def configure_protocols(svm_config):
         return False
 
 
+def create_network_interfaces(svm_name, net_interfaces_config):
+    """
+    Crea network interfaces (LIFs) en la SVM
+    
+    Equivale a:
+    network interface create -vserver <svm> -lif <lif_name> 
+    -data-protocol <protocol> -home-node <node> -home-port <port> 
+    -status-admin <up|down>
+    
+    Se ejecuta una vez por cada interfaz definida en net_interfaces del config.yaml
+    
+    Args:
+        svm_name: Nombre de la SVM donde crear las interfaces
+        net_interfaces_config: Lista de diccionarios con la configuración de cada interfaz
+    
+    Returns:
+        bool: True si todas las interfaces se crearon exitosamente, False si alguna falló
+    """
+    try:
+        # Validar que haya interfaces configuradas
+        if not net_interfaces_config:
+            print(f"[WARNING] No network interfaces configured")
+            return True
+        
+        print(f"\n[*] Creating network interfaces for SVM: {svm_name}")
+        print(f"[*] Number of interfaces to create: {len(net_interfaces_config)}")
+        
+        # Contador de interfaces creadas
+        created_count = 0
+        
+        # Iterar sobre cada interfaz configurada
+        for idx, interface_config in enumerate(net_interfaces_config, start=1):
+            # Extraer parámetros de la interfaz
+            lif_name = interface_config.get('lif')
+            home_node = interface_config.get('home_node')
+            home_port = interface_config.get('home_port')
+            data_protocol = interface_config.get('data_protocol', 'fcp')
+            status_admin = interface_config.get('status_admin', True)
+            
+            # Validar parámetros obligatorios
+            if not lif_name:
+                print(f"[ERROR] Interface #{idx}: Missing 'lif' name")
+                return False
+            
+            if not home_node:
+                print(f"[ERROR] Interface #{idx} ({lif_name}): Missing 'home_node'")
+                return False
+            
+            if not home_port:
+                print(f"[ERROR] Interface #{idx} ({lif_name}): Missing 'home_port'")
+                return False
+            
+            print(f"\n[*] Creating interface #{idx}: {lif_name}")
+            print(f"    - Home Node: {home_node}")
+            print(f"    - Home Port: {home_port}")
+            print(f"    - Data Protocol: {data_protocol}")
+            print(f"    - Status Admin: {'up' if status_admin else 'down'}")
+            
+            # Crear objeto IpInterface
+            interface = IpInterface()
+            interface.name = lif_name
+            interface.svm = {'name': svm_name}
+            
+            # Configurar location (home_node y home_port)
+            interface.location = {
+                'home_node': {'name': home_node},
+                'home_port': {'name': home_port}
+            }
+            
+            # Configurar data protocol
+            interface.data_protocol = data_protocol
+            
+            # Configurar enabled (status-admin)
+            interface.enabled = status_admin
+            
+            # Crear la interfaz
+            try:
+                interface.post()
+                print(f"[+] Interface '{lif_name}' created successfully!")
+                created_count += 1
+            
+            except NetAppRestError as error:
+                print(f"[ERROR] Failed to create interface '{lif_name}'")
+                print(f"[ERROR] HTTP Status: {error.status_code}")
+                
+                if error.status_code == 409:
+                    print(f"[ERROR] Interface '{lif_name}' may already exist")
+                elif error.status_code == 400:
+                    print(f"[ERROR] Bad request - Invalid parameters")
+                    print(f"[ERROR] Common causes:")
+                    print(f"[ERROR] - Node '{home_node}' doesn't exist")
+                    print(f"[ERROR] - Port '{home_port}' doesn't exist on node")
+                    print(f"[ERROR] - Invalid data protocol")
+                else:
+                    print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+                
+                return False
+        
+        print(f"\n[+] Successfully created {created_count}/{len(net_interfaces_config)} network interfaces")
+        return True
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during network interface creation: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
+
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -474,6 +581,13 @@ if configure_protocols(config_data['svm']):
     print("\n[SUCCESS] Protocol configuration completed!")
 else:
     print("\n[FAILED] Protocol configuration failed")
+    exit(1)
+
+# Crear network interfaces
+if create_network_interfaces(config_data['svm']['name'], config_data.get('net_interfaces', [])):
+    print("\n[SUCCESS] Network interfaces creation completed!")
+else:
+    print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
 

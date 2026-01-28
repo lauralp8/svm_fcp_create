@@ -4,12 +4,14 @@ cluster:
   password: Netapp1!
 
 svm: 
-  name: svm_demo2
+  name: prueba
   ipspace: Default  
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
   security_style: unix
-  # root_volume: svm_1_cluster_root # Se crea automáticamente. No es necesario especificarlo.
+
+  # Se crea automáticamente. Parece que no es necesario especificarlo
+  # root_volume: svm_1_cluster_root
 
   # Parámetros de modificación
   aggr_list:
@@ -29,4 +31,21 @@ svm:
     s3: false
     fcp: true
     iscsi: true
+
+# Configuración de Network Interfaces
+# Se pueden añadir tantas interfaces como se necesiten
+net_interfaces:
+  - lif: prueba_N1
+    home_node: cluster1-01
+    home_port: 0a
+    data_protocol: fcp
+    status_admin: true  
+  
+  - lif: prueba_N2
+    home_node: cluster1-02
+    home_port: 0b
+    data_protocol: fcp
+    status_admin: true
+
+
 
