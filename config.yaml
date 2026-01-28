@@ -70,8 +70,8 @@ mgmt_interface:
   service_policy: default-management
   address: 192.168.0.120
   netmask: 255.255.255.0
-  home_node: cluster1-01
-  home_port: e0a
+  home_node: cluster1-02
+  home_port: e0c
   status_admin: true  # true = up, false = down
   auto_revert: false
   failover_group: Default
