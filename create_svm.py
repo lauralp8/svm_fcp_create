@@ -268,7 +268,6 @@ def modify_svm(svm_config):
         space_enforcement = svm_config.get('is_space_enforcement_logical', False)
         
         
-        
         print(f"\n[*] Modifying SVM: {svm_name}")
         
         # Buscar la SVM
@@ -277,7 +276,7 @@ def modify_svm(svm_config):
             print(f"[ERROR] SVM '{svm_name}' not found")
             return False
         
-        # Configurar lista de agregados si se especifica
+        # Configurar lista de agregados desde config.yaml
         if aggr_list:
             svm.aggregates = [{'name': aggr} for aggr in aggr_list]
             print(f"[*] Aggregate list: {', '.join(aggr_list)}")
@@ -296,6 +295,7 @@ def modify_svm(svm_config):
         print(f"[+] SVM '{svm_name}' modified successfully!")
         return True
     
+    # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
@@ -311,8 +311,6 @@ def modify_svm(svm_config):
 def fcp_create(svm_config):
     """
     Crea un servicio FCP en la SVM y lo configura con status-admin desde config.yaml
-    
-    Basado en: vserver fcp create -vserver <name> -status-admin <up|down>
     
     Args:
         svm_config: Diccionario con la configuración de la SVM del config.yaml
@@ -361,6 +359,7 @@ def fcp_create(svm_config):
         print(f"[ERROR] Unexpected error during FCP creation: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
         return False
+
 
 def configure_protocols(svm_config):
     """
