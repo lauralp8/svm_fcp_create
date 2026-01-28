@@ -4,7 +4,7 @@ cluster:
   password: Netapp1!
 
 svm: 
-  name: prueba
+  name: svm_demo2
   ipspace: Default  
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
@@ -31,21 +31,6 @@ svm:
     s3: false
     fcp: true
     iscsi: true
-
-# Configuración de Network Interfaces
-# Se pueden añadir tantas interfaces como se necesiten
-net_interfaces:
-  - lif: prueba_N1
-    home_node: cluster1-01
-    home_port: 0a
-    data_protocol: fcp
-    status_admin: true  
-  
-  - lif: prueba_N2
-    home_node: cluster1-02
-    home_port: 0b
-    data_protocol: fcp
-    status_admin: true
 
 
 
