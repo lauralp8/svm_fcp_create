@@ -43,8 +43,8 @@ def config_loader(path="config.yaml"):
         print(f"Configuration loaded successfully")
 
         # Mostrar resumen de la configuración cargada
-        print(f"Target cluster: {config_data['cluster'].get('host', 'N/A')}")
-        print(f"SVM to create: {config_data['svm'].get('name', 'N/A')}")
+        print(f"[+]Target cluster: {config_data['cluster'].get('host', 'N/A')}")
+        print(f"[+] SVM to create: {config_data['svm'].get('name', 'N/A')}")
         
         return config_data
     
