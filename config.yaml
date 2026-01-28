@@ -35,35 +35,24 @@ svm:
 # Network Interfaces - Se crea una interfaz por cada elemento de la lista
 # Nota: Los puertos deben incluir el prefijo (e.g., e0a, e1a, e2a para ethernet)
 net_interfaces:
-  - lif: LIF1
-    data_protocol: fcp
-    home_node: cluster1-01
-    home_port: 1a
-    status_admin: true  # true = up, false = down
-  
-  - lif: LIF2
-    data_protocol: fcp
+  - lif: LIF30
+    data_protocol: nfs
     home_node: cluster1-02
     home_port: 1b
-    status_admin: true
+    status_admin: true  # true = up, false = down
   
-  - lif: LIF3
-    data_protocol: fcp
-    home_node: cluster1-01
+  - lif: LIF234
+    data_protocol: nfs
+    home_node: cluster1-02
     home_port: 0b
     status_admin: true
+  
+  - lif: LIFFF
+    data_protocol: nfs
+    home_node: cluster1-02
+    home_port: 0a
+    status_admin: true
 
-# Management Interface - Solo una interfaz de gestión
-management_interface:
-  lif: lif_fcp_mgmt
-  address: 192.168.0.120
-  netmask: 255.255.255.0
-  home_node: cluster1-01
-  home_port: e0d
-  status_admin: true  # true = up, false = down
-  service_policy: default-management
-  failover_policy: local-only #system-defined
-  firewall_policy: intercluster #mgmt
-  auto_revert: false
-  failover_group: Default
+
+
 
