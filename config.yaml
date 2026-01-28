@@ -38,12 +38,12 @@ net_interfaces:
   - lif: LIF1
     data_protocol: fcp
     home_node: cluster1-01
-    home_port: e1a
+    home_port: 1a
     status_admin: true  # true = up, false = down
   
   - lif: LIF2
     data_protocol: fcp
     home_node: cluster1-02
-    home_port: e1b
+    home_port: 1b
     status_admin: true
 
