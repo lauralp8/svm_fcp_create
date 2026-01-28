@@ -1,5 +1,5 @@
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Svm, FcpService, IpInterface
+from netapp_ontap.resources import Svm, FcpService, FcInterface
 import yaml
 
 print("Starting SVM creation script...")
@@ -435,9 +435,9 @@ def create_network_interfaces(svm_name, net_interfaces_config):
     """
     Crea network interfaces (LIFs) usando la API REST de ONTAP
     
-    API: POST /api/network/ip/interfaces
+    API: POST /api/network/fc/interfaces
     Equivalente CLI: network interface create -vserver <svm> -lif <name> 
-                     -data-protocol <protocol> -home-node <node> 
+                     -data-protocol fcp -home-node <node> 
                      -home-port <port> -status-admin <up|down>
     
     Args:
@@ -467,8 +467,8 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             
             print(f"\n[*] Creating interface #{idx}: {lif_name}")
             
-            # Crear objeto IpInterface usando la API REST
-            interface = IpInterface()
+            # Crear objeto FcInterface para protocolos FCP (SAN)
+            interface = FcInterface()
             interface.name = lif_name
             interface.svm = {'name': svm_name}
             
@@ -478,19 +478,15 @@ def create_network_interfaces(svm_name, net_interfaces_config):
                 'home_port': {'name': home_port}
             }
             
-            # Configurar service_policy para FCP (requerido por la API)
-            if data_protocol:
-                interface.service_policy = {'name': 'default-data-blocks'}
-            
-            # Configurar enabled (status-admin: up=true, down=false)
-            interface.enabled = status_admin
+            # Configurar data_protocol
+            interface.data_protocol = data_protocol
             
             # POST a la API
             interface.post()
             
             print(f"[+] Interface '{lif_name}' created successfully")
             print(f"    - Home: {home_node}:{home_port}")
-            print(f"    - Status: {'up' if status_admin else 'down'}")
+            print(f"    - Protocol: {data_protocol}")
         
         return True
     
@@ -510,7 +506,7 @@ def show_network_interfaces(svm_name, lif_names):
     """
     Muestra información de las network interfaces creadas
     
-    API: GET /api/network/ip/interfaces
+    API: GET /api/network/fc/interfaces
     Equivalente CLI: network interface show -vserver <svm> -lif <name>
     
     Args:
@@ -529,7 +525,7 @@ def show_network_interfaces(svm_name, lif_names):
         
         for lif_name in lif_names:
             # GET usando la API REST con filtros
-            interfaces = IpInterface.get_collection(
+            interfaces = FcInterface.get_collection(
                 **{'svm.name': svm_name, 'name': lif_name}
             )
             
@@ -541,10 +537,12 @@ def show_network_interfaces(svm_name, lif_names):
                 print(f"  SVM: {interface.svm.name}")
                 print(f"  Home Node: {interface.location.home_node.name}")
                 print(f"  Home Port: {interface.location.home_port.name}")
-                print(f"  Enabled: {interface.enabled}")
+                print(f"  Data Protocol: {interface.data_protocol if hasattr(interface, 'data_protocol') else 'fcp'}")
                 print(f"  State: {interface.state if hasattr(interface, 'state') else 'N/A'}")
                 if hasattr(interface, 'uuid'):
                     print(f"  UUID: {interface.uuid}")
+                if hasattr(interface, 'wwpn'):
+                    print(f"  WWPN: {interface.wwpn}")
         
         print(f"{'='*80}")
         return True
