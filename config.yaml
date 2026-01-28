@@ -62,8 +62,8 @@ management_interface:
   home_port: e0d
   status_admin: true  # true = up, false = down
   service_policy: default-management
-  failover_policy: system-defined
-  firewall_policy: mgmt
+  failover_policy: local-only #system-defined
+  firewall_policy: intercluster #mgmt
   auto_revert: false
   failover_group: Default
 
