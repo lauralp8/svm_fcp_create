@@ -100,7 +100,7 @@ def cluster_connection(cluster_config):
             cluster_config['host'],
             username=cluster_config['username'],
             password=cluster_config['password'],
-            verify=True # ** Cambiar a False si se usan certificados auto-firmados **
+            verify=False 
         )
         
         # Verificar acceso haciendo una consulta al cluster
