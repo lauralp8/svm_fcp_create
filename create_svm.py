@@ -24,6 +24,7 @@ def config_loader(path="config.yaml"):
         with open(path, 'r', encoding='utf-8') as file:
             config_data = yaml.safe_load(file)
         
+        # VALIDACIONES
         # Validar que el archivo no esté vacío
         if config_data is None:
             print(f"[ERROR] File '{path}' is empty or doen't contain valid YAML")
@@ -40,11 +41,14 @@ def config_loader(path="config.yaml"):
             return None
         
         print(f"Configuration loaded successfully")
+
+        # Mostrar resumen de la configuración cargada
         print(f"Target cluster: {config_data['cluster'].get('host', 'N/A')}")
         print(f"SVM to create: {config_data['svm'].get('name', 'N/A')}")
         
         return config_data
     
+    # CONTROL DE ERRORES
     except FileNotFoundError:
         print(f"[ERROR] File not found: {path}")
         print(f"[ERROR] Please check the path and try again")
@@ -664,6 +668,7 @@ def create_management_interface(svm_name, mgmt_config):
         return False
 
 
+# CONFIG YAML LOADER
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -672,7 +677,10 @@ if config_data is None:
     print("\n[ERROR] Cannot continue without valid configuration")
     print("[ERROR] Check the config.yaml file and try again")
     exit(1)
+else:
+    print("\n[SUCCESS] Configuration loaded - Proceeding with pre-checks")
 
+# CLUSTER CONNECTION CHECK
 # Establecer conexión y verificar acceso a la cabina NetApp
 if not connect_to_cluster(config_data['cluster']):
     print("\n[ERROR] Failed to connect to NetApp cluster")
