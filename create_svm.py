@@ -540,7 +540,7 @@ def show_network_interfaces(svm_name, lif_names):
                 print(f"\nLIF: {interface.name}")
                 print(f"  SVM: {interface.svm.name}")
                 print(f"  Home Node: {interface.location.home_node.name}")
-                print(f"  Home Port: {interface.location.home_port.name}")
+                print(f"  Home Port: {interface.location.home_port}")
                 print(f"  Enabled: {interface.enabled}")
                 print(f"  State: {interface.state if hasattr(interface, 'state') else 'N/A'}")
                 if hasattr(interface, 'uuid'):
