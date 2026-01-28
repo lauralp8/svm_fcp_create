@@ -493,6 +493,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"[+] Interface '{lif_name}' created successfully")
             print(f"    - Home: {home_node}:{home_port}")
             print(f"    - Protocol: {data_protocol}")
+            print(f"    - Status Admin: {status_admin}")
         
         return True
     
