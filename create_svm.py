@@ -1,9 +1,50 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+NetApp ONTAP SVM Creation and Configuration Script
+
+This script automates the creation and configuration of Storage Virtual Machines (SVMs)
+on NetApp ONTAP systems using the NetApp ONTAP REST API Python Client Library.
+
+Features:
+    - SVM creation with custom parameters
+    - FCP service configuration
+    - Multiple network interfaces (FCP LIFs)
+    - Management interface creation
+    - Protocol configuration
+    - Comprehensive error handling and validation
+
+Requirements:
+    - NetApp ONTAP 9.6+
+    - Python 3.7+
+    - netapp-ontap library
+    - PyYAML library
+
+Author: NetApp ONTAP Automation
+Version: 1.0.0
+"""
+
+# ============================================================================
+# IMPORTS
+# ============================================================================
 from netapp_ontap import config, HostConnection, NetAppRestError
 from netapp_ontap.resources import Cluster, Svm, FcpService, FcInterface, IpInterface
 import yaml
 
-print("\nCREATE SVM SCRIPT USING NETAPP ONTAP PYTHON CLIENT LIBRARY")
-print("[*] Starting SVM creation script...")
+
+# ============================================================================
+# SCRIPT INITIALIZATION
+# ============================================================================
+print("\n" + "="*70)
+print("  NetApp ONTAP SVM Creation Script")
+print("  Using NetApp ONTAP Python Client Library")
+print("="*70)
+print("\n[*] Initializing SVM creation workflow...")
+
+
+# ============================================================================
+# CONFIGURATION FUNCTIONS
+# ============================================================================
 
 def config_loader(path="config.yaml"):
     """
@@ -150,6 +191,10 @@ def cluster_connection(cluster_config):
         print(f"[ERROR] Message: {str(e)}")
         return False
 
+
+# ============================================================================
+# SVM MANAGEMENT FUNCTIONS
+# ============================================================================
 
 def create_svm(svm_config):
     """
@@ -625,6 +670,9 @@ def create_management_interface(svm_name, mgmt_config):
         print(f"[ERROR] Details: {str(e)}")
         return False
 
+# ============================================================================
+# CALLING WORKFLOW
+# ============================================================================
 
 # CONFIG YAML LOADER
 # Cargar la configuración desde el archivo YAML
