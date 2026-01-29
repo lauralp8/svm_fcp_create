@@ -29,7 +29,7 @@ svm:
   # Protocolos permitidos
   protocols:
     cifs: false
-    nfs: true
+    nfs: false
     ndmp: false
     s3: false
     fcp: true
