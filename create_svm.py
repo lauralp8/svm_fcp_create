@@ -424,6 +424,46 @@ def modify_svm(svm_config):
         svm.patch()
         
         print(f"[+] SVM '{svm_name}' modified successfully!")
+        
+        # GET: Obtener datos reales de la SVM desde la cabina
+        print(f"[*] Retrieving SVM details from cluster...")
+        svm_updated = Svm.find(name=svm_name)
+        if svm_updated:
+            svm_updated.get(fields='aggregates,is_space_reporting_logical,is_space_enforcement_logical')
+            
+            # Extraer lista de agregados
+            aggr_list_data = []
+            if hasattr(svm_updated, 'aggregates') and svm_updated.aggregates:
+                aggr_list_data = [{'name': aggr.name, 'uuid': aggr.uuid} for aggr in svm_updated.aggregates]
+            
+            # Extraer los datos para el show
+            svm_data = {
+                'vserver_name': svm_name,
+                'aggr_list': aggr_list_data,
+                'is_space_reporting_logical': svm_updated.is_space_reporting_logical if hasattr(svm_updated, 'is_space_reporting_logical') else False,
+                'is_space_enforcement_logical': svm_updated.is_space_enforcement_logical if hasattr(svm_updated, 'is_space_enforcement_logical') else False
+            }
+            
+            # SHOW: Mostrar información de la SVM modificada
+            print(f"\n{'='*60}")
+            print(f"  SVM Modification Show")
+            print(f"{'='*60}")
+            print(f"                 Vserver Name: {svm_data['vserver_name']}")
+            print(f"is-space-reporting-logical: {svm_data['is_space_reporting_logical']}")
+            print(f"is-space-enforcement-logical: {svm_data['is_space_enforcement_logical']}")
+            print(f"                   Aggr List:")
+            if svm_data['aggr_list']:
+                for aggr in svm_data['aggr_list']:
+                    print(f"  - {aggr['name']}")
+            else:
+                print(f"  (No aggregates configured)")
+            print(f"{'='*60}\n")
+            
+            # Guardar en log con timestamp
+            save_to_log('modify_svm', svm_data)
+        else:
+            print(f"[WARNING] Could not retrieve SVM details")
+        
         return True
     
     # CONTROL DE ERRORES
