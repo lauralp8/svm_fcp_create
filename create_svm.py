@@ -28,7 +28,7 @@ Version: 1.0.0
 # IMPORTS
 # ============================================================================
 from netapp_ontap import config, HostConnection, NetAppRestError
-from netapp_ontap.resources import Cluster, Svm, FcpService, FcInterface, IpInterface
+from netapp_ontap.resources import Cluster, Svm, FcpService, FcInterface, IpInterface, EmsEvent
 import yaml
 import json
 import os
@@ -948,6 +948,77 @@ def create_management_interface(svm_name, mgmt_config):
         print(f"[ERROR] Details: {str(e)}")
         return False
 
+
+def get_event_logs(max_records=100):
+    """
+    Obtiene los logs de eventos del sistema NetApp ONTAP
+    
+    Args:
+        max_records: Número máximo de eventos a recuperar (default: 100)
+    
+    Returns:
+        bool: True si se obtuvieron exitosamente, False si hubo error
+    """
+    try:
+        print(f"\n[*] Retrieving event logs from cluster...")
+        
+        # GET: Obtener eventos del sistema desde la cabina
+        events_list = []
+        ems_events = EmsEvent.get_collection(fields='time,name,message.name,message.severity', max_records=max_records)
+        
+        for event in ems_events:
+            event.get()
+            
+            event_data = {
+                'time': str(event.time) if hasattr(event, 'time') else 'N/A',
+                'event_name': event.name if hasattr(event, 'name') else 'N/A',
+                'message_name': event.message.name if hasattr(event, 'message') and event.message else 'N/A',
+                'severity': event.message.severity if hasattr(event, 'message') and event.message else 'N/A'
+            }
+            events_list.append(event_data)
+        
+        event_log_data = {
+            'total_events': len(events_list),
+            'max_records_requested': max_records,
+            'events': events_list
+        }
+        
+        # SHOW: Mostrar información como "event log show"
+        print(f"\n{'='*100}")
+        print(f"  Event Log Show")
+        print(f"{'='*100}")
+        print(f"{'Time':<25} {'Event':<30} {'Message':<30} {'Severity':<10}")
+        print(f"{'-'*25} {'-'*30} {'-'*30} {'-'*10}")
+        
+        for evt in events_list[:20]:  # Mostrar solo los primeros 20 en pantalla
+            print(f"{evt['time']:<25} {evt['event_name']:<30} {evt['message_name']:<30} {evt['severity']:<10}")
+        
+        if len(events_list) > 20:
+            print(f"... ({len(events_list) - 20} more events)")
+        
+        print(f"\nTotal events retrieved: {len(events_list)}")
+        print(f"{'='*100}\n")
+        
+        # Guardar en log con timestamp
+        save_to_log('event_logs', event_log_data)
+        
+        return True
+    
+    # CONTROL DE ERRORES
+    except NetAppRestError as error:
+        print(f"[ERROR] NetApp API error during event log retrieval")
+        print(f"[ERROR] HTTP Status: {error.status_code}")
+        if error.http_err_response and error.http_err_response.http_response:
+            print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        else:
+            print(f"[ERROR] Details: {str(error)}")
+        return False
+    
+    except Exception as e:
+        print(f"[ERROR] Unexpected error during event log retrieval: {type(e).__name__}")
+        print(f"[ERROR] Details: {str(e)}")
+        return False
+
 # ============================================================================
 # CALLING WORKFLOW
 # ============================================================================
@@ -1017,3 +1088,9 @@ if create_management_interface(config_data['svm']['name'], mgmt_interface):
 else:
     print("\n[FAILED] Management interface creation failed")
     exit(1)
+
+# Obtener event logs de la cabina como backup
+if get_event_logs(max_records=100):
+    print("\n[SUCCESS] Event logs backup completed!")
+else:
+    print("\n[WARNING] Event logs backup failed (non-critical)")
