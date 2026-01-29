@@ -39,7 +39,7 @@ from datetime import datetime
 # SCRIPT INITIALIZATION
 # ============================================================================
 print("\n" + "="*70)
-print("  NetApp ONTAP SVM Creation Script")
+print("  NetApp ONTAP FCP SVM Creation Script")
 print("  Using NetApp ONTAP Python Client Library")
 print("="*70)
 print("\n[*] Initializing SVM creation workflow...")
