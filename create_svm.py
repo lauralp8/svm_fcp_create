@@ -964,16 +964,17 @@ def get_event_logs(max_records=100):
         
         # GET: Obtener eventos del sistema desde la cabina
         events_list = []
-        ems_events = EmsEvent.get_collection(fields='time,name,message.name,message.severity', max_records=max_records)
+        ems_events = EmsEvent.get_collection(max_records=max_records)
         
         for event in ems_events:
             event.get()
             
             event_data = {
+                'index': event.index if hasattr(event, 'index') else 'N/A',
                 'time': str(event.time) if hasattr(event, 'time') else 'N/A',
-                'event_name': event.name if hasattr(event, 'name') else 'N/A',
-                'message_name': event.message.name if hasattr(event, 'message') and event.message else 'N/A',
-                'severity': event.message.severity if hasattr(event, 'message') and event.message else 'N/A'
+                'node': event.node.name if hasattr(event, 'node') and event.node else 'N/A',
+                'severity': event.message.severity if hasattr(event, 'message') and hasattr(event.message, 'severity') else 'N/A',
+                'event': event.message.name if hasattr(event, 'message') and hasattr(event.message, 'name') else 'N/A'
             }
             events_list.append(event_data)
         
@@ -984,20 +985,20 @@ def get_event_logs(max_records=100):
         }
         
         # SHOW: Mostrar información como "event log show"
-        print(f"\n{'='*100}")
+        print(f"\n{'='*110}")
         print(f"  Event Log Show")
-        print(f"{'='*100}")
-        print(f"{'Time':<25} {'Event':<30} {'Message':<30} {'Severity':<10}")
-        print(f"{'-'*25} {'-'*30} {'-'*30} {'-'*10}")
+        print(f"{'='*110}")
+        print(f"{'Index':<8} {'Time':<25} {'Node':<20} {'Severity':<12} {'Event':<40}")
+        print(f"{'-'*8} {'-'*25} {'-'*20} {'-'*12} {'-'*40}")
         
         for evt in events_list[:20]:  # Mostrar solo los primeros 20 en pantalla
-            print(f"{evt['time']:<25} {evt['event_name']:<30} {evt['message_name']:<30} {evt['severity']:<10}")
+            print(f"{str(evt['index']):<8} {evt['time']:<25} {evt['node']:<20} {evt['severity']:<12} {evt['event']:<40}")
         
         if len(events_list) > 20:
             print(f"... ({len(events_list) - 20} more events)")
         
         print(f"\nTotal events retrieved: {len(events_list)}")
-        print(f"{'='*100}\n")
+        print(f"{'='*110}\n")
         
         # Guardar en log con timestamp
         save_to_log('event_logs', event_log_data)
