@@ -473,10 +473,35 @@ def fcp_create(svm_config):
         print(f"[*] Creating FCP service...")
         fcp.post()
         
-        # Mostrar estado del servicio como up/down
-        status_text = "up" if fcp_status_admin else "down"
         print(f"[+] FCP service created successfully!")
-        print(f"[*] Status admin: {status_text}")
+        
+        # GET: Obtener datos reales del servicio FCP desde la cabina
+        print(f"[*] Retrieving FCP service details from cluster...")
+        fcp_service = FcpService.find(svm={'name': svm_name})
+        if fcp_service:
+            fcp_service.get()
+            
+            # Extraer los datos para el show
+            fcp_data = {
+                'vserver_name': svm_name,
+                'target_name': fcp_service.target.name if hasattr(fcp_service, 'target') and fcp_service.target else 'N/A',
+                'administrative_status': 'up' if fcp_service.enabled else 'down',
+                'svm_uuid': fcp_service.svm.uuid if hasattr(fcp_service.svm, 'uuid') else 'N/A'
+            }
+            
+            # SHOW: Mostrar información como "vserver fcp show -vserver <name>"
+            print(f"\n{'='*60}")
+            print(f"  FCP Service Show")
+            print(f"{'='*60}")
+            print(f"         Vserver Name: {fcp_data['vserver_name']}")
+            print(f"          Target Name: {fcp_data['target_name']}")
+            print(f"Administrative Status: {fcp_data['administrative_status']}")
+            print(f"{'='*60}\n")
+            
+            # Guardar en log con timestamp
+            save_to_log('fcp_create', fcp_data)
+        else:
+            print(f"[WARNING] Could not retrieve FCP service details")
         
         return True
     
