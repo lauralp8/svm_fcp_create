@@ -2,19 +2,20 @@
 
 Script automatizado para la creación y configuración completa de Storage Virtual Machines (SVMs) en NetApp ONTAP usando la API REST oficial.
 
-## 📚 Descripción
+## Descripción
 
 Este script de Python automatiza todo el proceso de creación de una SVM en NetApp ONTAP, incluyendo:
 
-- ✅ Creación de la SVM con configuración básica
-- ✅ Modificación de parámetros de espacio lógico
-- ✅ Creación de servicio FCP
-- ✅ Configuración de protocolos permitidos (CIFS, NFS, FCP, iSCSI, etc.)
-- ✅ Creación de interfaces de red FCP (múltiples)
-- ✅ Creación de interfaz de management
-- ✅ Validación y visualización de configuración
+- Creación de la SVM con configuración básica
+- Modificación de parámetros de espacio lógico
+- Creación de servicio FCP
+- Configuración de protocolos permitidos (CIFS, NFS, FCP, iSCSI, etc.)
+- Creación de interfaces de red FCP (múltiples)
+- Creación de interfaz de management
+- Backup automático de event logs del cluster
+- Sistema de logging con timestamp para todas las operaciones
 
-## 🛠️ Requisitos
+## Requisitos
 
 ### Software
 - Python 3.7 o superior
@@ -27,17 +28,25 @@ Este script de Python automatiza todo el proceso de creación de una SVM en NetA
 pip install -r requirements.txt
 ```
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 CreateSVM/
 ├── create_svm.py      # Script principal
 ├── config.yaml        # Archivo de configuración
 ├── requirements.txt   # Dependencias Python
-└── README.md          # Esta documentación
+├── README.md          # Esta documentación
+└── logs/              # Logs JSON generados automáticamente
+    ├── create_svm_YYYYMMDD_HHMMSS.json
+    ├── modify_svm_YYYYMMDD_HHMMSS.json
+    ├── fcp_create_YYYYMMDD_HHMMSS.json
+    ├── configure_protocols_YYYYMMDD_HHMMSS.json
+    ├── create_network_interfaces_YYYYMMDD_HHMMSS.json
+    ├── create_management_interface_YYYYMMDD_HHMMSS.json
+    └── event_logs_YYYYMMDD_HHMMSS.json
 ```
 
-## ⚙️ Configuración
+## Configuración
 
 Edita el archivo `config.yaml` con los parámetros de tu entorno:
 
@@ -108,7 +117,65 @@ mgmt_interface:
   failover_group: Default
 ```
 
-## 🚀 Uso
+## Sistema de Logging
+
+El script implementa un sistema de logging automático que captura datos REALES de la cabina NetApp después de cada operación:
+
+### Características
+- **Timestamp automático**: Formato YYYYMMDD_HHMMSS (ej: 20260129_124530)
+- **Formato JSON**: Datos estructurados y fáciles de procesar
+- **Datos de cabina**: GET real desde ONTAP, no configuración enviada
+- **Directorio logs/**: Se crea automáticamente si no existe
+
+### Logs Generados
+
+1. **create_svm_YYYYMMDD_HHMMSS.json**
+   - UUID de la SVM
+   - Nombre, estado, ipspace
+   - Agregados asignados
+   - Configuración de seguridad
+
+2. **modify_svm_YYYYMMDD_HHMMSS.json**
+   - Lista de agregados configurados
+   - is-space-reporting-logical
+   - is-space-enforcement-logical
+
+3. **fcp_create_YYYYMMDD_HHMMSS.json**
+   - Target Name (WWPN)
+   - Administrative Status
+   - SVM UUID
+
+4. **configure_protocols_YYYYMMDD_HHMMSS.json**
+   - Allowed Protocols (lista)
+   - Disallowed Protocols (lista)
+   - Vserver UUID
+
+5. **create_network_interfaces_YYYYMMDD_HHMMSS.json**
+   - Lista completa de interfaces FC creadas
+   - WWPN, nodo, puerto, estado
+
+6. **create_management_interface_YYYYMMDD_HHMMSS.json**
+   - Dirección IP/máscara
+   - Nodo, puerto, estado
+   - Service policy
+
+7. **event_logs_YYYYMMDD_HHMMSS.json**
+   - Backup de eventos del cluster (últimos 100)
+   - Index, timestamp, nodo, severidad, evento
+
+### Ejemplo de Uso de Logs
+```bash
+# Ver último log de creación de SVM
+cat logs/create_svm_*.json | tail -1 | jq .
+
+# Extraer UUIDs de todas las SVMs creadas
+cat logs/create_svm_*.json | jq -r '.uuid'
+
+# Ver event logs más recientes
+cat logs/event_logs_*.json | tail -1 | jq '.events[] | select(.severity=="alert")'
+```
+
+## Uso
 
 ### Ejecución Básica
 ```bash
@@ -119,13 +186,14 @@ python create_svm.py
 
 1. **Carga de configuración** - Lee y valida `config.yaml`
 2. **Conexión al cluster** - Establece conexión y verifica credenciales
-3. **Creación de SVM** - Crea la SVM con parámetros básicos
-4. **Modificación de SVM** - Configura agregados y espacio lógico
-5. **Servicio FCP** - Crea y habilita el servicio FCP
-6. **Protocolos** - Configura protocolos permitidos/no permitidos
-7. **Interfaces FCP** - Crea todas las interfaces de datos FCP
-8. **Interfaz Management** - Crea la interfaz de gestión
-9. **Validación** - Muestra configuración final del cluster
+3. **Creación de SVM** - Crea la SVM con parámetros básicos → Guarda log
+4. **Modificación de SVM** - Configura agregados y espacio lógico → Guarda log
+5. **Servicio FCP** - Crea y habilita el servicio FCP → Guarda log
+6. **Protocolos** - Configura protocolos permitidos/no permitidos → Guarda log
+7. **Interfaces FCP** - Crea todas las interfaces de datos FCP → Guarda log
+8. **Interfaz Management** - Crea la interfaz de gestión → Guarda log
+9. **Event Logs Backup** - Obtiene logs de eventos del cluster → Guarda log
+10. **Finalización** - Todos los logs disponibles en directorio `logs/`
 
 ### Ejemplo de Salida
 ```
@@ -147,21 +215,29 @@ SVM to create: svm_demo2
 ...
 ```
 
-## 📝 API REST de NetApp
+## API REST de NetApp
 
 Este script utiliza la **API REST oficial de NetApp ONTAP**:
 
+### Endpoints POST (Creación)
 - **POST** `/api/svm/svms` - Creación de SVM
-- **PATCH** `/api/svm/svms/{uuid}` - Modificación de SVM y protocolos
 - **POST** `/api/protocols/san/fcp/services` - Creación servicio FCP
 - **POST** `/api/network/fc/interfaces` - Creación interfaces FCP
 - **POST** `/api/network/ip/interfaces` - Creación interfaz management
-- **GET** `/api/network/fc/interfaces` - Consulta de interfaces
+
+### Endpoints PATCH (Modificación)
+- **PATCH** `/api/svm/svms/{uuid}` - Modificación de SVM y protocolos
+
+### Endpoints GET (Consulta)
+- **GET** `/api/svm/svms` - Consulta de SVMs
+- **GET** `/api/protocols/san/fcp/services` - Consulta servicio FCP
+- **GET** `/api/network/fc/interfaces` - Consulta de interfaces FC
 - **GET** `/api/network/ip/interfaces` - Consulta de interfaces IP
+- **GET** `/api/support/ems/events` - Consulta de event logs
 
-📖 **Documentación oficial**: [NetApp ONTAP REST API](https://library.netapp.com/ecmdocs/ECMLP3351667/html/)
+**Documentación oficial**: [NetApp ONTAP REST API](https://library.netapp.com/ecmdocs/ECMLP3351667/html/)
 
-## ⚠️ Notas Importantes
+## Notas Importantes
 
 ### Failover Policy y Firewall Policy
 
@@ -185,7 +261,7 @@ Los puertos deben incluir su prefijo:
 - **FCP/FC-NVMe**: Usan `FcInterface` (no requieren IP)
 - **NFS/CIFS/iSCSI**: Usan `IpInterface` (requieren IP address)
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Error: "SVM already exists"
 ```
@@ -211,7 +287,7 @@ Los puertos deben incluir su prefijo:
 ```
 **Solución**: Verifica las credenciales en `config.yaml`.
 
-## 📚 Comandos CLI Equivalentes
+## Comandos CLI Equivalentes
 
 Este script automatiza los siguientes comandos CLI:
 
@@ -242,17 +318,18 @@ network interface create -vserver svm_name -lif lif_mgmt \
   -status-admin up -auto-revert false
 ```
 
-## 🔒 Seguridad
+## Seguridad
 
-- ⚠️ **NO** compartas el archivo `config.yaml` con credenciales
+- **IMPORTANTE**: NO compartas el archivo `config.yaml` con credenciales
 - Considera usar variables de entorno para credenciales sensibles
 - El script desactiva verificación SSL (`verify=False`) - úsalo solo en entornos de desarrollo/pruebas
+- Los logs pueden contener información sensible - protege el directorio `logs/`
 
-## 📝 Licencia
+## Licencia
 
 Este script es para uso interno y educativo.
 
-## ✉️ Soporte
+## Soporte
 
 Para problemas relacionados con la API de NetApp, consulta:
 - [Documentación API REST](https://library.netapp.com/ecmdocs/ECMLP3351667/html/)
