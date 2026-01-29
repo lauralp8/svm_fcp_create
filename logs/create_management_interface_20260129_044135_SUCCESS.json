@@ -1,0 +1,20 @@
+{
+  "operation": "create_management_interface",
+  "timestamp": "2026-01-29T04:41:35.246248",
+  "status": "SUCCESS",
+  "configuration": {
+    "svm_name": "svm_1_cluster",
+    "mgmt_config": {
+      "lif": "management",
+      "service_policy": "default-management",
+      "address": "192.168.0.120",
+      "netmask": "255.255.255.0",
+      "home_node": "cluster1-02",
+      "home_port": "e0c",
+      "status_admin": "up",
+      "auto_revert": false,
+      "failover_group": "Default"
+    }
+  },
+  "error_message": null
+}
