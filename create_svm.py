@@ -747,22 +747,20 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             
             print(f"[+] Interface '{lif_name}' created successfully")
         
-        # GET: Obtener todas las interfaces de red de la SVM desde la cabina
-        print(f"\n[*] Retrieving network interfaces from cluster...")
+        # GET: Obtener todas las FC interfaces de la SVM desde la cabina
+        print(f"\n[*] Retrieving FC network interfaces from cluster...")
         interfaces_list = []
         
-        # Obtener todas las FcInterfaces de la SVM
         fc_interfaces = FcInterface.get_collection(svm={'name': svm_name})
         for fc_lif in fc_interfaces:
             fc_lif.get()
             
-            # Extraer datos de la interfaz FC
             interface_data = {
                 'vserver': svm_name,
                 'interface': fc_lif.name,
                 'status_admin': 'up' if fc_lif.enabled else 'down',
                 'status_oper': fc_lif.state if hasattr(fc_lif, 'state') else 'N/A',
-                'address': fc_lif.wwpn if hasattr(fc_lif, 'wwpn') else 'N/A',
+                'wwpn': fc_lif.wwpn if hasattr(fc_lif, 'wwpn') else 'N/A',
                 'current_node': fc_lif.location.node.name if hasattr(fc_lif, 'location') and fc_lif.location.node else 'N/A',
                 'current_port': fc_lif.location.port.name if hasattr(fc_lif, 'location') and fc_lif.location.port else 'N/A',
                 'is_home': fc_lif.location.is_home if hasattr(fc_lif, 'location') and hasattr(fc_lif.location, 'is_home') else True,
@@ -770,26 +768,25 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             }
             interfaces_list.append(interface_data)
         
-        # Preparar datos para el log
         network_data = {
             'vserver_name': svm_name,
             'interfaces': interfaces_list,
             'total_interfaces': len(interfaces_list)
         }
         
-        # SHOW: Mostrar información como "network interface show -vserver <name>"
-        print(f"\n{'='*80}")
-        print(f"  Network Interface Show")
-        print(f"{'='*80}")
-        print(f"{'Vserver':<15} {'Interface':<18} {'Admin/Oper':<12} {'Address/Mask':<24} {'Node':<15} {'Port':<8} {'Home':<5}")
-        print(f"{'-'*15} {'-'*18} {'-'*12} {'-'*24} {'-'*15} {'-'*8} {'-'*5}")
+        # SHOW: Mostrar como "network interface show -vserver <name>"
+        print(f"\n{'='*100}")
+        print(f"  Network Interface Show (FC)")
+        print(f"{'='*100}")
+        print(f"{'Vserver':<15} {'Interface':<20} {'Admin/Oper':<12} {'WWPN':<25} {'Node':<15} {'Port':<8} {'Home':<5}")
+        print(f"{'-'*15} {'-'*20} {'-'*12} {'-'*25} {'-'*15} {'-'*8} {'-'*5}")
         
         for iface in interfaces_list:
             admin_oper = f"{iface['status_admin']}/{iface['status_oper']}"
             is_home_str = 'true' if iface['is_home'] else 'false'
-            print(f"{iface['vserver']:<15} {iface['interface']:<18} {admin_oper:<12} {iface['address']:<24} {iface['current_node']:<15} {iface['current_port']:<8} {is_home_str:<5}")
+            print(f"{iface['vserver']:<15} {iface['interface']:<20} {admin_oper:<12} {iface['wwpn']:<25} {iface['current_node']:<15} {iface['current_port']:<8} {is_home_str:<5}")
         
-        print(f"{'='*80}\n")
+        print(f"{'='*100}\n")
         
         # Guardar en log con timestamp
         save_to_log('create_network_interfaces', network_data)
@@ -894,6 +891,45 @@ def create_management_interface(svm_name, mgmt_config):
         interface.post()
         
         print(f"[+] Management interface '{lif}' created successfully")
+        
+        # GET: Obtener la interfaz IP creada desde la cabina (filtrado por nombre)
+        print(f"\n[*] Retrieving management interface from cluster...")
+        ip_interface = IpInterface.find(name=lif, svm={'name': svm_name})
+        
+        if ip_interface:
+            ip_interface.get()
+            
+            mgmt_data = {
+                'vserver': svm_name,
+                'interface': ip_interface.name,
+                'status_admin': 'up' if ip_interface.enabled else 'down',
+                'status_oper': ip_interface.state if hasattr(ip_interface, 'state') else 'N/A',
+                'address': ip_interface.ip.address if hasattr(ip_interface, 'ip') and ip_interface.ip else 'N/A',
+                'netmask': ip_interface.ip.netmask if hasattr(ip_interface, 'ip') and ip_interface.ip else 'N/A',
+                'current_node': ip_interface.location.node.name if hasattr(ip_interface, 'location') and ip_interface.location.node else 'N/A',
+                'current_port': ip_interface.location.port.name if hasattr(ip_interface, 'location') and ip_interface.location.port else 'N/A',
+                'is_home': ip_interface.location.is_home if hasattr(ip_interface, 'location') and hasattr(ip_interface.location, 'is_home') else True,
+                'service_policy': ip_interface.service_policy.name if hasattr(ip_interface, 'service_policy') and ip_interface.service_policy else 'N/A'
+            }
+            
+            # SHOW: Mostrar como "network interface show -vserver <name> -lif <lif>"
+            print(f"\n{'='*100}")
+            print(f"  Network Interface Show (Management)")
+            print(f"{'='*100}")
+            print(f"{'Vserver':<15} {'Interface':<20} {'Admin/Oper':<12} {'Address/Mask':<22} {'Node':<15} {'Port':<8} {'Home':<5}")
+            print(f"{'-'*15} {'-'*20} {'-'*12} {'-'*22} {'-'*15} {'-'*8} {'-'*5}")
+            
+            admin_oper = f"{mgmt_data['status_admin']}/{mgmt_data['status_oper']}"
+            address_mask = f"{mgmt_data['address']}/{mgmt_data['netmask']}"
+            is_home_str = 'true' if mgmt_data['is_home'] else 'false'
+            
+            print(f"{mgmt_data['vserver']:<15} {mgmt_data['interface']:<20} {admin_oper:<12} {address_mask:<22} {mgmt_data['current_node']:<15} {mgmt_data['current_port']:<8} {is_home_str:<5}")
+            print(f"{'='*100}\n")
+            
+            # Guardar en log con timestamp
+            save_to_log('create_management_interface', mgmt_data)
+        else:
+            print(f"[WARNING] Could not retrieve management interface details")
         
         return True
     
