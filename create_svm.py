@@ -46,6 +46,49 @@ print("\n[*] Initializing SVM creation workflow...")
 
 
 # ============================================================================
+# LOGGING FUNCTIONS
+# ============================================================================
+
+def save_to_log(operation_name, data):
+    """
+    Guarda datos en un archivo JSON dentro de la carpeta logs/ con timestamp
+    
+    Args:
+        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
+        data (dict): Datos a guardar (normalmente el show de la cabina)
+    
+    Returns:
+        str: Ruta del archivo creado
+    
+    Ejemplo:
+        save_to_log('create_svm', svm_data)
+        # Crea: logs/create_svm_20260129_143025.json
+    """
+    try:
+        # Crear carpeta logs si no existe
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+        
+        # Generar timestamp: YYYYMMDD_HHMMSS
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Nombre del archivo: operation_YYYYMMDD_HHMMSS.json
+        filename = f"{logs_dir}/{operation_name}_{timestamp}.json"
+        
+        # Guardar en formato JSON
+        with open(filename, 'w', encoding='utf-8') as log_file:
+            json.dump(data, log_file, indent=2, ensure_ascii=False)
+        
+        print(f"[LOG] Saved to: {filename}")
+        return filename
+    
+    except Exception as e:
+        print(f"[WARNING] Could not save log: {str(e)}")
+        return None
+
+
+# ============================================================================
 # CONFIGURATION FUNCTIONS
 # ============================================================================
 
@@ -262,6 +305,46 @@ def create_svm(svm_config):
         new_svm.post()
         
         print(f"[+] SVM '{svm_name}' created successfully!")
+        
+        # SHOW - Obtener y mostrar datos reales de la cabina
+        print(f"\n[*] Retrieving SVM details from cluster...")
+        svm_created = Svm.find(name=svm_name)
+        svm_show = Svm(uuid=svm_created.uuid)
+        svm_show.get()
+        
+        # Preparar datos para guardar en log
+        svm_data = {
+            'uuid': svm_show.uuid,
+            'name': svm_show.name,
+            'state': svm_show.state if hasattr(svm_show, 'state') else None,
+            'ipspace': svm_show.ipspace.name if hasattr(svm_show, 'ipspace') and svm_show.ipspace else None,
+            'language': svm_show.language if hasattr(svm_show, 'language') else None,
+            'security_style': svm_show.security_style if hasattr(svm_show, 'security_style') else None,
+            'aggregates': [
+                {'name': aggr.name, 'uuid': aggr.uuid} 
+                for aggr in svm_show.aggregates
+            ] if hasattr(svm_show, 'aggregates') and svm_show.aggregates else []
+        }
+        
+        # Imprimir show de la SVM
+        print(f"\n{'='*60}")
+        print(f"  SVM SHOW - Data from NetApp Cluster")
+        print(f"{'='*60}")
+        print(f"UUID:                    {svm_data['uuid']}")
+        print(f"Name:                    {svm_data['name']}")
+        print(f"State:                   {svm_data['state'] or 'N/A'}")
+        print(f"IPspace:                 {svm_data['ipspace'] or 'N/A'}")
+        print(f"Language:                {svm_data['language'] or 'N/A'}")
+        print(f"Security Style:          {svm_data['security_style'] or 'N/A'}")
+        if svm_data['aggregates']:
+            print(f"Aggregates:")
+            for aggr in svm_data['aggregates']:
+                print(f"  - {aggr['name']} (UUID: {aggr['uuid']})")
+        print(f"{'='*60}\n")
+        
+        # Guardar en log con timestamp
+        save_to_log('create_svm', svm_data)
+        
         return True
     
     # CONTROL DE ERRORES
