@@ -967,8 +967,6 @@ def get_event_logs(max_records=100):
         ems_events = EmsEvent.get_collection(max_records=max_records)
         
         for event in ems_events:
-            event.get()
-            
             event_data = {
                 'index': event.index if hasattr(event, 'index') else 'N/A',
                 'time': str(event.time) if hasattr(event, 'time') else 'N/A',
