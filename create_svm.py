@@ -49,13 +49,14 @@ print("\n[*] Initializing SVM creation workflow...")
 # LOGGING AND BACKUP FUNCTIONS
 # ============================================================================
 
-def save_operation_log(operation_name, data, status="SUCCESS", error_message=None):
+def save_operation_log(operation_name, config_sent, cluster_response=None, status="SUCCESS", error_message=None):
     """
-    Guarda un log/backup de cada operación realizada con timestamp
+    Guarda un log/backup de cada operación con datos REALES de la cabina
     
     Args:
         operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
-        data (dict): Datos de la operación (configuración usada)
+        config_sent (dict): Configuración enviada desde config.yaml
+        cluster_response (dict): Respuesta REAL obtenida de la cabina con GET/show
         status (str): Estado de la operación ('SUCCESS' o 'ERROR')
         error_message (str): Mensaje de error si status='ERROR'
     
@@ -63,8 +64,7 @@ def save_operation_log(operation_name, data, status="SUCCESS", error_message=Non
         str: Ruta del archivo de log creado
     
     Ejemplo de uso:
-        save_operation_log('create_svm', svm_config, 'SUCCESS')
-        save_operation_log('create_svm', svm_config, 'ERROR', str(error))
+        save_operation_log('create_svm', svm_config, cluster_response=svm_data, status='SUCCESS')
     """
     try:
         # Crear carpeta logs si no existe
@@ -83,7 +83,8 @@ def save_operation_log(operation_name, data, status="SUCCESS", error_message=Non
             "operation": operation_name,
             "timestamp": datetime.now().isoformat(),
             "status": status,
-            "configuration": data,
+            "configuration_sent": config_sent,
+            "cluster_response": cluster_response,
             "error_message": error_message
         }
         
@@ -97,6 +98,7 @@ def save_operation_log(operation_name, data, status="SUCCESS", error_message=Non
     except Exception as e:
         print(f"[WARNING] Could not save operation log: {str(e)}")
         return None
+
 
 
 # ============================================================================
@@ -317,8 +319,25 @@ def create_svm(svm_config):
         
         print(f"[+] SVM '{svm_name}' created successfully!")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('create_svm', svm_config, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving SVM information from cluster...")
+        created_svm = Svm.find(name=svm_name)
+        svm_obj = Svm(uuid=created_svm.uuid)
+        svm_obj.get()
+        
+        # Convertir objeto SVM a diccionario para el log
+        cluster_response = {
+            'uuid': svm_obj.uuid,
+            'name': svm_obj.name,
+            'state': svm_obj.state if hasattr(svm_obj, 'state') else None,
+            'ipspace': svm_obj.ipspace.name if hasattr(svm_obj, 'ipspace') and svm_obj.ipspace else None,
+            'language': svm_obj.language if hasattr(svm_obj, 'language') else None,
+            'security_style': svm_obj.security_style if hasattr(svm_obj, 'security_style') else None,
+            'aggregates': [{'name': agg.name, 'uuid': agg.uuid} for agg in svm_obj.aggregates] if hasattr(svm_obj, 'aggregates') and svm_obj.aggregates else []
+        }
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('create_svm', svm_config, cluster_response=cluster_response, status='SUCCESS')
         
         return True
     
@@ -404,8 +423,23 @@ def modify_svm(svm_config):
         
         print(f"[+] SVM '{svm_name}' modified successfully!")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('modify_svm', svm_config, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving updated SVM information from cluster...")
+        svm_updated = Svm.find(name=svm_name)
+        svm_obj = Svm(uuid=svm_updated.uuid)
+        svm_obj.get()
+        
+        # Convertir objeto SVM a diccionario para el log
+        cluster_response = {
+            'uuid': svm_obj.uuid,
+            'name': svm_obj.name,
+            'aggregates': [{'name': agg.name, 'uuid': agg.uuid} for agg in svm_obj.aggregates] if hasattr(svm_obj, 'aggregates') and svm_obj.aggregates else [],
+            'is_space_reporting_logical': svm_obj.is_space_reporting_logical if hasattr(svm_obj, 'is_space_reporting_logical') else None,
+            'is_space_enforcement_logical': svm_obj.is_space_enforcement_logical if hasattr(svm_obj, 'is_space_enforcement_logical') else None
+        }
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('modify_svm', svm_config, cluster_response=cluster_response, status='SUCCESS')
         
         return True
     
@@ -470,8 +504,22 @@ def fcp_create(svm_config):
         print(f"[+] FCP service created successfully!")
         print(f"[*] Status admin: {status_text}")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('fcp_create', svm_config, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving FCP service information from cluster...")
+        fcp_services = list(FcpService.get_collection(svm={'name': svm_name}))
+        
+        cluster_response = None
+        if fcp_services:
+            fcp_svc = fcp_services[0]
+            fcp_svc.get()
+            cluster_response = {
+                'svm': {'name': svm_name},
+                'enabled': fcp_svc.enabled if hasattr(fcp_svc, 'enabled') else None,
+                'target_name': fcp_svc.target.name if hasattr(fcp_svc, 'target') and fcp_svc.target else None
+            }
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('fcp_create', svm_config, cluster_response=cluster_response, status='SUCCESS')
         
         return True
     
@@ -554,8 +602,30 @@ def configure_protocols(svm_config):
         
         print(f"[+] Protocol configuration applied successfully!")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('configure_protocols', svm_config, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving protocol configuration from cluster...")
+        svm_updated = Svm.find(name=svm_name)
+        svm_data = Svm(uuid=svm_updated.uuid)
+        svm_data.get()
+        
+        # Extraer configuración de protocolos real de la cabina
+        cluster_response = {
+            'svm_name': svm_name,
+            'protocols': {}
+        }
+        
+        # Obtener estado real de cada protocolo
+        for protocol in protocols_config.keys():
+            protocol_name = protocol.lower()
+            if hasattr(svm_data, protocol_name):
+                protocol_obj = getattr(svm_data, protocol_name)
+                if protocol_obj and hasattr(protocol_obj, 'allowed'):
+                    cluster_response['protocols'][protocol_name] = {
+                        'allowed': protocol_obj.allowed
+                    }
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('configure_protocols', svm_config, cluster_response=cluster_response, status='SUCCESS')
         
         return True
     
@@ -653,8 +723,35 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"    - Protocol: {data_protocol}")
             print(f"    - Status Admin: {status_admin}")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving network interfaces information from cluster...")
+        fc_interfaces = list(FcInterface.get_collection(svm={'name': svm_name}))
+        
+        cluster_response = {
+            'svm_name': svm_name,
+            'interfaces': []
+        }
+        
+        for fc_if in fc_interfaces:
+            fc_if.get()
+            interface_data = {
+                'uuid': fc_if.uuid if hasattr(fc_if, 'uuid') else None,
+                'name': fc_if.name if hasattr(fc_if, 'name') else None,
+                'data_protocol': fc_if.data_protocol if hasattr(fc_if, 'data_protocol') else None,
+                'enabled': fc_if.enabled if hasattr(fc_if, 'enabled') else None,
+                'location': {
+                    'home_node': fc_if.location.home_node.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_node') else None,
+                    'home_port': fc_if.location.home_port.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_port') else None
+                } if hasattr(fc_if, 'location') else None,
+                'wwpn': fc_if.wwpn if hasattr(fc_if, 'wwpn') else None
+            }
+            cluster_response['interfaces'].append(interface_data)
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('create_network_interfaces', 
+                          {'svm_name': svm_name, 'interfaces': net_interfaces_config}, 
+                          cluster_response=cluster_response, 
+                          status='SUCCESS')
         
         return True
     
@@ -766,8 +863,35 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
-        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
-        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='SUCCESS')
+        # OBTENER DATOS REALES DE LA CABINA (SHOW)
+        print(f"[*] Retrieving management interface information from cluster...")
+        ip_interfaces = list(IpInterface.get_collection(svm={'name': svm_name}, name=lif))
+        
+        cluster_response = None
+        if ip_interfaces:
+            mgmt_if = ip_interfaces[0]
+            mgmt_if.get()
+            cluster_response = {
+                'uuid': mgmt_if.uuid if hasattr(mgmt_if, 'uuid') else None,
+                'name': mgmt_if.name if hasattr(mgmt_if, 'name') else None,
+                'enabled': mgmt_if.enabled if hasattr(mgmt_if, 'enabled') else None,
+                'ip': {
+                    'address': mgmt_if.ip.address if hasattr(mgmt_if, 'ip') and mgmt_if.ip else None,
+                    'netmask': mgmt_if.ip.netmask if hasattr(mgmt_if, 'ip') and mgmt_if.ip else None
+                } if hasattr(mgmt_if, 'ip') else None,
+                'location': {
+                    'home_node': mgmt_if.location.home_node.name if hasattr(mgmt_if, 'location') and mgmt_if.location and hasattr(mgmt_if.location, 'home_node') else None,
+                    'home_port': mgmt_if.location.home_port.name if hasattr(mgmt_if, 'location') and mgmt_if.location and hasattr(mgmt_if.location, 'home_port') else None,
+                    'auto_revert': mgmt_if.location.auto_revert if hasattr(mgmt_if, 'location') and mgmt_if.location else None
+                } if hasattr(mgmt_if, 'location') else None,
+                'service_policy': mgmt_if.service_policy.name if hasattr(mgmt_if, 'service_policy') and mgmt_if.service_policy else None
+            }
+        
+        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
+        save_operation_log('create_management_interface', 
+                          {'svm_name': svm_name, 'mgmt_config': mgmt_config}, 
+                          cluster_response=cluster_response, 
+                          status='SUCCESS')
         
         return True
     
