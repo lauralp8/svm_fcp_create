@@ -46,50 +46,7 @@ print("\n[*] Initializing SVM creation workflow...")
 
 
 # ============================================================================
-# LOGGING FUNCTIONS
-# ============================================================================
-
-def save_to_log(operation_name, data):
-    """
-    Guarda datos en un archivo JSON dentro de la carpeta logs/ con timestamp
-    
-    Args:
-        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
-        data (dict): Datos a guardar (normalmente el show de la cabina)
-    
-    Returns:
-        str: Ruta del archivo creado
-    
-    Ejemplo:
-        save_to_log('create_svm', svm_data)
-        # Crea: logs/create_svm_20260129_143025.json
-    """
-    try:
-        # Crear carpeta logs si no existe
-        logs_dir = "logs"
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
-        
-        # Generar timestamp: YYYYMMDD_HHMMSS
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Nombre del archivo: operation_YYYYMMDD_HHMMSS.json
-        filename = f"{logs_dir}/{operation_name}_{timestamp}.json"
-        
-        # Guardar en formato JSON
-        with open(filename, 'w', encoding='utf-8') as log_file:
-            json.dump(data, log_file, indent=2, ensure_ascii=False)
-        
-        print(f"[LOG] Saved to: {filename}")
-        return filename
-    
-    except Exception as e:
-        print(f"[WARNING] Could not save log: {str(e)}")
-        return None
-
-
-# ============================================================================
-# CONFIGURATION FUNCTIONS
+# YAML CONFIGURATION FUNCTION
 # ============================================================================
 
 def config_loader(path="config.yaml"):
@@ -156,6 +113,53 @@ def config_loader(path="config.yaml"):
         print(f"[ERROR] Message: {str(e)}")
         return None
 
+
+# ============================================================================
+# SAVE TO LOG FUNCTION
+# ============================================================================
+
+def save_to_log(operation_name, data):
+    """
+    Guarda datos en un archivo JSON dentro de la carpeta logs/ con timestamp
+    
+    Args:
+        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
+        data (dict): Datos a guardar (normalmente el show de la cabina)
+    
+    Returns:
+        str: Ruta del archivo creado
+    
+    Ejemplo:
+        save_to_log('create_svm', svm_data)
+        # Crea: logs/create_svm_20260129_143025.json
+    """
+    try:
+        # Crear carpeta logs si no existe
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+        
+        # Generar timestamp: YYYYMMDD_HHMMSS
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Nombre del archivo: operation_YYYYMMDD_HHMMSS.json
+        filename = f"{logs_dir}/{operation_name}_{timestamp}.json"
+        
+        # Guardar en formato JSON
+        with open(filename, 'w', encoding='utf-8') as log_file:
+            json.dump(data, log_file, indent=2, ensure_ascii=False)
+        
+        print(f"[LOG] Saved to: {filename}")
+        return filename
+    
+    except Exception as e:
+        print(f"[WARNING] Could not save log: {str(e)}")
+        return None
+
+
+# ============================================================================
+# CLUSTER CONNECTION FUNCTION
+# ============================================================================
 
 def cluster_connection(cluster_config):
     """
@@ -479,6 +483,10 @@ def modify_svm(svm_config):
         return False
 
 
+# ============================================================================
+# FCP PROTOCOL CONFIGURATION FUNCTIONS
+# ============================================================================
+
 def fcp_create(svm_config):
     """
     Crea un servicio FCP en la SVM y lo configura con status-admin desde config.yaml
@@ -682,6 +690,10 @@ def configure_protocols(svm_config):
         print(f"[ERROR] Details: {str(e)}")
         return False
 
+
+# ============================================================================
+# FCP NETWORK INTERFACE CONFIGURATION FUNCTIONS
+# ============================================================================
 
 def create_network_interfaces(svm_name, net_interfaces_config):
     """
@@ -948,6 +960,9 @@ def create_management_interface(svm_name, mgmt_config):
         print(f"[ERROR] Details: {str(e)}")
         return False
 
+# ============================================================================
+# EVENT LOG RETRIEVAL FUNCTION
+# ============================================================================
 
 def get_event_logs(max_records=100):
     """
@@ -1043,7 +1058,7 @@ if not cluster_connection(config_data['cluster']):
 
 print("\n[+] All pre-checks passed - Ready to create SVM")
 
-# FCP SVM CREATION STEPS
+# SVM CREATION STEPS
 # Crear la SVM
 if create_svm(config_data['svm']):
     print("\n[SUCCESS] SVM creation completed!")
@@ -1058,6 +1073,7 @@ else:
     print("\n[FAILED] SVM modification failed")
     exit(1)
 
+# FCP SERVICE CREATION STEPS
 # Crear servicio FCP en la SVM
 if fcp_create(config_data['svm']):
     print("\n[SUCCESS] FCP service creation completed!")
@@ -1072,6 +1088,7 @@ else:
     print("\n[FAILED] Protocol configuration failed")
     exit(1)
 
+# NETWORK INTERFACE CREATION STEPS
 # Crear network interfaces
 net_interfaces = config_data.get('net_interfaces', [])
 if create_network_interfaces(config_data['svm']['name'], net_interfaces):
@@ -1080,6 +1097,7 @@ else:
     print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
+# MANAGEMENT FCP NETWORK INTERFACE CREATION STEPS
 # Crear management interface
 mgmt_interface = config_data.get('mgmt_interface', {})
 if create_management_interface(config_data['svm']['name'], mgmt_interface):
