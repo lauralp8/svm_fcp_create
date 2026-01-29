@@ -751,7 +751,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"\n[*] Retrieving FC network interfaces from cluster...")
         interfaces_list = []
         
-        fc_interfaces = FcInterface.get_collection(svm={'name': svm_name})
+        fc_interfaces = FcInterface.get_collection(**{'svm.name': svm_name})
         for fc_lif in fc_interfaces:
             fc_lif.get()
             
