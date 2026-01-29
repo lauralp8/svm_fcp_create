@@ -615,6 +615,53 @@ def configure_protocols(svm_config):
         svm_obj.patch()
         
         print(f"[+] Protocol configuration applied successfully!")
+        
+        # GET: Obtener datos reales de la SVM con los protocolos desde la cabina
+        print(f"[*] Retrieving protocol configuration from cluster...")
+        svm_updated = Svm.find(name=svm_name)
+        if svm_updated:
+            # Obtener todos los campos de protocolos
+            svm_updated.get(fields='nfs,cifs,fcp,iscsi,nvme,s3,ndmp')
+            
+            # Construir listas de protocolos permitidos y no permitidos
+            allowed_protocols = []
+            disallowed_protocols = []
+            
+            # Lista de protocolos conocidos en NetApp ONTAP
+            protocol_fields = ['nfs', 'cifs', 'fcp', 'iscsi', 'nvme', 's3', 'ndmp']
+            
+            for protocol in protocol_fields:
+                if hasattr(svm_updated, protocol):
+                    protocol_obj = getattr(svm_updated, protocol)
+                    if protocol_obj and hasattr(protocol_obj, 'allowed'):
+                        if protocol_obj.allowed:
+                            allowed_protocols.append(protocol)
+                        else:
+                            disallowed_protocols.append(protocol)
+            
+            # Extraer los datos para el show
+            svm_data = {
+                'vserver_name': svm_name,
+                'vserver_uuid': svm_updated.uuid if hasattr(svm_updated, 'uuid') else 'N/A',
+                'allowed_protocols': allowed_protocols,
+                'disallowed_protocols': disallowed_protocols
+            }
+            
+            # SHOW: Mostrar información como "vserver show -vserver <name> -instance"
+            print(f"\n{'='*60}")
+            print(f"  Protocol Configuration Show")
+            print(f"{'='*60}")
+            print(f"                   Vserver: {svm_data['vserver_name']}")
+            print(f"              Vserver UUID: {svm_data['vserver_uuid']}")
+            print(f"        Allowed Protocols: {', '.join(allowed_protocols) if allowed_protocols else 'none'}")
+            print(f"     Disallowed Protocols: {', '.join(disallowed_protocols) if disallowed_protocols else 'none'}")
+            print(f"{'='*60}\n")
+            
+            # Guardar en log con timestamp
+            save_to_log('configure_protocols', svm_data)
+        else:
+            print(f"[WARNING] Could not retrieve protocol configuration")
+        
         return True
     
     # CONTROL DE ERRORES
