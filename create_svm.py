@@ -746,9 +746,53 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             net_interface.post()
             
             print(f"[+] Interface '{lif_name}' created successfully")
-            print(f"    - Home: {home_node}:{home_port}")
-            print(f"    - Protocol: {data_protocol}")
-            print(f"    - Status Admin: {status_admin}")
+        
+        # GET: Obtener todas las interfaces de red de la SVM desde la cabina
+        print(f"\n[*] Retrieving network interfaces from cluster...")
+        interfaces_list = []
+        
+        # Obtener todas las FcInterfaces de la SVM
+        fc_interfaces = FcInterface.get_collection(svm={'name': svm_name})
+        for fc_lif in fc_interfaces:
+            fc_lif.get()
+            
+            # Extraer datos de la interfaz FC
+            interface_data = {
+                'vserver': svm_name,
+                'interface': fc_lif.name,
+                'status_admin': 'up' if fc_lif.enabled else 'down',
+                'status_oper': fc_lif.state if hasattr(fc_lif, 'state') else 'N/A',
+                'address': fc_lif.wwpn if hasattr(fc_lif, 'wwpn') else 'N/A',
+                'current_node': fc_lif.location.node.name if hasattr(fc_lif, 'location') and fc_lif.location.node else 'N/A',
+                'current_port': fc_lif.location.port.name if hasattr(fc_lif, 'location') and fc_lif.location.port else 'N/A',
+                'is_home': fc_lif.location.is_home if hasattr(fc_lif, 'location') and hasattr(fc_lif.location, 'is_home') else True,
+                'data_protocol': fc_lif.data_protocol if hasattr(fc_lif, 'data_protocol') else 'fcp'
+            }
+            interfaces_list.append(interface_data)
+        
+        # Preparar datos para el log
+        network_data = {
+            'vserver_name': svm_name,
+            'interfaces': interfaces_list,
+            'total_interfaces': len(interfaces_list)
+        }
+        
+        # SHOW: Mostrar información como "network interface show -vserver <name>"
+        print(f"\n{'='*80}")
+        print(f"  Network Interface Show")
+        print(f"{'='*80}")
+        print(f"{'Vserver':<15} {'Interface':<18} {'Admin/Oper':<12} {'Address/Mask':<24} {'Node':<15} {'Port':<8} {'Home':<5}")
+        print(f"{'-'*15} {'-'*18} {'-'*12} {'-'*24} {'-'*15} {'-'*8} {'-'*5}")
+        
+        for iface in interfaces_list:
+            admin_oper = f"{iface['status_admin']}/{iface['status_oper']}"
+            is_home_str = 'true' if iface['is_home'] else 'false'
+            print(f"{iface['vserver']:<15} {iface['interface']:<18} {admin_oper:<12} {iface['address']:<24} {iface['current_node']:<15} {iface['current_port']:<8} {is_home_str:<5}")
+        
+        print(f"{'='*80}\n")
+        
+        # Guardar en log con timestamp
+        save_to_log('create_network_interfaces', network_data)
         
         return True
     
