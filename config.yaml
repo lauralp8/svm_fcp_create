@@ -1,17 +1,20 @@
+# ============================================================================
+# CONFIGURACIÓN PARA CREAR SVM CON SERVICIO FCP USANDO API REST DE ONTAP
+# ============================================================================
+
+# Configuración del clúster
 cluster:
   host: cluster1.demo.netapp.com
   username: admin
   password: Netapp1!
 
+# Configuración de la SVM FCP
 svm: 
   name: svm_1_cluster
-  ipspace: Default  
+  ipspace: Default
   aggregate: cluster1_01_SSD_1
   language: c.utf_8
   security_style: unix
-
-  # Se crea automáticamente. Parece q no es necesario especificarlo
-  # root_volume: svm_1_cluster_root
 
   # Parámetros de modificación
   aggr_list:
@@ -19,11 +22,11 @@ svm:
     - cluster1_02_SSD_1
   is_space_reporting_logical: true
   is_space_enforcement_logical: true
+
+  # Configuración del servicio FCP
+  fcp_status_admin: up  # Opciones: up, down
   
-  # Parámetros FCP
-  fcp_status_admin: up  # true = up, false = down
-  
-  # Configuración de protocolos (true = allowed, false = not allowed)
+  # Protocolos permitidos
   protocols:
     cifs: false
     nfs: true
@@ -32,39 +35,27 @@ svm:
     fcp: true
     iscsi: true
 
-# Network Interfaces - Se crea una interfaz por cada elemento de la lista
-# Nota: Los puertos deben incluir el prefijo (e.g., e0a, e1a, e2a para ethernet)
+# Configuración de interfaces de red
 net_interfaces:
   - lif: lif_1_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 1b
-    status_admin: down  # true = up, false = down
+    status_admin: down  # Opciones: up, down
   
   - lif: lif_2_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0b
-    status_admin: up # true = up, false = down
+    status_admin: up  # Opciones: up, down
   
   - lif: lif_3_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0a
-    status_admin: up # true = up, false = down
+    status_admin: up  # Opciones: up, down
 
-# Management Interface - Interfaz de gestión de la SVM
-# NOTA IMPORTANTE sobre failover_policy y firewall_policy:
-# - Estos parámetros NO se incluyen porque la API REST los controla automáticamente
-#   a través del service_policy
-# - Cuando usas service_policy: default-management, ONTAP asigna automáticamente:
-#   * failover_policy: system-defined (equivale a broadcast_domain_only)
-#   * firewall_policy: mgmt (DEPRECATED - ya no se usa en ONTAP moderno)
-# - Estos valores NO son configurables directamente en la API REST moderna de ONTAP
-# - Para modificarlos necesitarías:
-#   1. Usar un service_policy diferente (ej: default-data-files, default-data-blocks)
-#   2. Crear un custom service policy con las políticas deseadas
-#   3. Modificar la interfaz después de crearla usando PATCH API
+# Configuración de la interfaz de gestión
 mgmt_interface:
   lif: management
   service_policy: default-management
@@ -72,7 +63,7 @@ mgmt_interface:
   netmask: 255.255.255.0
   home_node: cluster1-02
   home_port: e0c
-  status_admin: up  # true = up, false = down
+  status_admin: up  # Opciones: up, down
   auto_revert: false
   failover_group: Default
 
