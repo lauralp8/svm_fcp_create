@@ -1,6 +1,6 @@
 {
   "vserver_name": "svm_1_cluster",
-  "vserver_uuid": "f356c2c0-fd04-11f0-80e5-005056b0899f",
+  "vserver_uuid": "7008530f-fd07-11f0-80e5-005056b0899f",
   "allowed_protocols": [
     "nfs",
     "fcp",

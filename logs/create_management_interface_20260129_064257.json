@@ -1,0 +1,12 @@
+{
+  "vserver": "svm_1_cluster",
+  "interface": "management",
+  "status_admin": "up",
+  "status_oper": "up",
+  "address": "192.168.0.120",
+  "netmask": "24",
+  "current_node": "cluster1-02",
+  "current_port": "e0c",
+  "is_home": true,
+  "service_policy": "default-management"
+}

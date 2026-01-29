@@ -1,0 +1,39 @@
+{
+  "vserver_name": "svm_1_cluster",
+  "interfaces": [
+    {
+      "vserver": "svm_1_cluster",
+      "interface": "lif_1_cluster1",
+      "status_admin": "down",
+      "status_oper": "down",
+      "wwpn": "20:03:00:50:56:b0:89:9f",
+      "current_node": "cluster1-02",
+      "current_port": "1b",
+      "is_home": true,
+      "data_protocol": "fcp"
+    },
+    {
+      "vserver": "svm_1_cluster",
+      "interface": "lif_2_cluster1",
+      "status_admin": "up",
+      "status_oper": "up",
+      "wwpn": "20:04:00:50:56:b0:89:9f",
+      "current_node": "cluster1-02",
+      "current_port": "0b",
+      "is_home": true,
+      "data_protocol": "fcp"
+    },
+    {
+      "vserver": "svm_1_cluster",
+      "interface": "lif_3_cluster1",
+      "status_admin": "up",
+      "status_oper": "up",
+      "wwpn": "20:09:00:50:56:b0:89:9f",
+      "current_node": "cluster1-02",
+      "current_port": "0a",
+      "is_home": true,
+      "data_protocol": "fcp"
+    }
+  ],
+  "total_interfaces": 3
+}
