@@ -30,6 +30,9 @@ Version: 1.0.0
 from netapp_ontap import config, HostConnection, NetAppRestError
 from netapp_ontap.resources import Cluster, Svm, FcpService, FcInterface, IpInterface
 import yaml
+import json
+import os
+from datetime import datetime
 
 
 # ============================================================================
@@ -40,6 +43,60 @@ print("  NetApp ONTAP SVM Creation Script")
 print("  Using NetApp ONTAP Python Client Library")
 print("="*70)
 print("\n[*] Initializing SVM creation workflow...")
+
+
+# ============================================================================
+# LOGGING AND BACKUP FUNCTIONS
+# ============================================================================
+
+def save_operation_log(operation_name, data, status="SUCCESS", error_message=None):
+    """
+    Guarda un log/backup de cada operación realizada con timestamp
+    
+    Args:
+        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
+        data (dict): Datos de la operación (configuración usada)
+        status (str): Estado de la operación ('SUCCESS' o 'ERROR')
+        error_message (str): Mensaje de error si status='ERROR'
+    
+    Returns:
+        str: Ruta del archivo de log creado
+    
+    Ejemplo de uso:
+        save_operation_log('create_svm', svm_config, 'SUCCESS')
+        save_operation_log('create_svm', svm_config, 'ERROR', str(error))
+    """
+    try:
+        # Crear carpeta logs si no existe
+        logs_dir = "logs"
+        if not os.path.exists(logs_dir):
+            os.makedirs(logs_dir)
+        
+        # Generar timestamp para el nombre del archivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Nombre del archivo: logs/create_svm_20260129_143025_SUCCESS.json
+        filename = f"{logs_dir}/{operation_name}_{timestamp}_{status}.json"
+        
+        # Preparar contenido del log
+        log_content = {
+            "operation": operation_name,
+            "timestamp": datetime.now().isoformat(),
+            "status": status,
+            "configuration": data,
+            "error_message": error_message
+        }
+        
+        # Guardar en formato JSON (fácil de leer y parsear)
+        with open(filename, 'w', encoding='utf-8') as log_file:
+            json.dump(log_content, log_file, indent=2, ensure_ascii=False)
+        
+        print(f"[LOG] Operation backup saved: {filename}")
+        return filename
+    
+    except Exception as e:
+        print(f"[WARNING] Could not save operation log: {str(e)}")
+        return None
 
 
 # ============================================================================
@@ -259,12 +316,20 @@ def create_svm(svm_config):
         new_svm.post()
         
         print(f"[+] SVM '{svm_name}' created successfully!")
+        
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('create_svm', svm_config, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during SVM creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response else str(error)}"
+        save_operation_log('create_svm', svm_config, status='ERROR', error_message=error_msg)
         
         # Proporcionar información detallada según el error
         if error.status_code == 409:
@@ -338,6 +403,10 @@ def modify_svm(svm_config):
         svm.patch()
         
         print(f"[+] SVM '{svm_name}' modified successfully!")
+        
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('modify_svm', svm_config, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
@@ -345,11 +414,20 @@ def modify_svm(svm_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
+        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=error_msg)
+        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
+        
+        # Guardar log de error
+        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=str(e))
+        
         return False
 
 
@@ -392,12 +470,19 @@ def fcp_create(svm_config):
         print(f"[+] FCP service created successfully!")
         print(f"[*] Status admin: {status_text}")
         
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('fcp_create', svm_config, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during FCP creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response else str(error)}"
+        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 409:
             print(f"[ERROR] FCP service may already exist on this SVM")
@@ -411,6 +496,10 @@ def fcp_create(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during FCP creation: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
+        
+        # Guardar log de error
+        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=str(e))
+        
         return False
 
 
@@ -464,12 +553,20 @@ def configure_protocols(svm_config):
         svm_obj.patch()
         
         print(f"[+] Protocol configuration applied successfully!")
+        
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('configure_protocols', svm_config, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during protocol configuration")
         print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
+        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 400:
             print(f"[ERROR] Bad request - Invalid protocol configuration")
@@ -482,6 +579,10 @@ def configure_protocols(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during protocol configuration: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
+        
+        # Guardar log de error
+        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=str(e))
+        
         return False
 
 
@@ -552,6 +653,9 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"    - Protocol: {data_protocol}")
             print(f"    - Status Admin: {status_admin}")
         
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
@@ -559,11 +663,20 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
+        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='ERROR', error_message=error_msg)
+        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
+        
+        # Guardar log de error
+        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='ERROR', error_message=str(e))
+        
         return False
 
 
@@ -653,12 +766,20 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
+        # GUARDAR BACKUP DE LA OPERACIÓN EXITOSA
+        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='SUCCESS')
+        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
+        
+        # Guardar log de error
+        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response and error.http_err_response.http_response else str(error)}"
+        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='ERROR', error_message=error_msg)
+        
         if error.http_err_response and error.http_err_response.http_response:
             print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
         else:
@@ -668,6 +789,10 @@ def create_management_interface(svm_name, mgmt_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
+        
+        # Guardar log de error
+        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='ERROR', error_message=str(e))
+        
         return False
 
 # ============================================================================
