@@ -46,62 +46,6 @@ print("\n[*] Initializing SVM creation workflow...")
 
 
 # ============================================================================
-# LOGGING AND BACKUP FUNCTIONS
-# ============================================================================
-
-def save_operation_log(operation_name, config_sent, cluster_response=None, status="SUCCESS", error_message=None):
-    """
-    Guarda un log/backup de cada operación con datos REALES de la cabina
-    
-    Args:
-        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
-        config_sent (dict): Configuración enviada desde config.yaml
-        cluster_response (dict): Respuesta REAL obtenida de la cabina con GET/show
-        status (str): Estado de la operación ('SUCCESS' o 'ERROR')
-        error_message (str): Mensaje de error si status='ERROR'
-    
-    Returns:
-        str: Ruta del archivo de log creado
-    
-    Ejemplo de uso:
-        save_operation_log('create_svm', svm_config, cluster_response=svm_data, status='SUCCESS')
-    """
-    try:
-        # Crear carpeta logs si no existe
-        logs_dir = "logs"
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
-        
-        # Generar timestamp para el nombre del archivo
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Nombre del archivo: logs/create_svm_20260129_143025_SUCCESS.json
-        filename = f"{logs_dir}/{operation_name}_{timestamp}_{status}.json"
-        
-        # Preparar contenido del log
-        log_content = {
-            "operation": operation_name,
-            "timestamp": datetime.now().isoformat(),
-            "status": status,
-            "configuration_sent": config_sent,
-            "cluster_response": cluster_response,
-            "error_message": error_message
-        }
-        
-        # Guardar en formato JSON (fácil de leer y parsear)
-        with open(filename, 'w', encoding='utf-8') as log_file:
-            json.dump(log_content, log_file, indent=2, ensure_ascii=False)
-        
-        print(f"[LOG] Operation backup saved: {filename}")
-        return filename
-    
-    except Exception as e:
-        print(f"[WARNING] Could not save operation log: {str(e)}")
-        return None
-
-
-
-# ============================================================================
 # CONFIGURATION FUNCTIONS
 # ============================================================================
 
@@ -318,37 +262,12 @@ def create_svm(svm_config):
         new_svm.post()
         
         print(f"[+] SVM '{svm_name}' created successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving SVM information from cluster...")
-        created_svm = Svm.find(name=svm_name)
-        svm_obj = Svm(uuid=created_svm.uuid)
-        svm_obj.get()
-        
-        # Convertir objeto SVM a diccionario para el log
-        cluster_response = {
-            'uuid': svm_obj.uuid,
-            'name': svm_obj.name,
-            'state': svm_obj.state if hasattr(svm_obj, 'state') else None,
-            'ipspace': svm_obj.ipspace.name if hasattr(svm_obj, 'ipspace') and svm_obj.ipspace else None,
-            'language': svm_obj.language if hasattr(svm_obj, 'language') else None,
-            'security_style': svm_obj.security_style if hasattr(svm_obj, 'security_style') else None,
-            'aggregates': [{'name': agg.name, 'uuid': agg.uuid} for agg in svm_obj.aggregates] if hasattr(svm_obj, 'aggregates') and svm_obj.aggregates else []
-        }
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('create_svm', svm_config, cluster_response=cluster_response, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during SVM creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response else str(error)}"
-        save_operation_log('create_svm', svm_config, status='ERROR', error_message=error_msg)
         
         # Proporcionar información detallada según el error
         if error.status_code == 409:
@@ -422,25 +341,6 @@ def modify_svm(svm_config):
         svm.patch()
         
         print(f"[+] SVM '{svm_name}' modified successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving updated SVM information from cluster...")
-        svm_updated = Svm.find(name=svm_name)
-        svm_obj = Svm(uuid=svm_updated.uuid)
-        svm_obj.get()
-        
-        # Convertir objeto SVM a diccionario para el log
-        cluster_response = {
-            'uuid': svm_obj.uuid,
-            'name': svm_obj.name,
-            'aggregates': [{'name': agg.name, 'uuid': agg.uuid} for agg in svm_obj.aggregates] if hasattr(svm_obj, 'aggregates') and svm_obj.aggregates else [],
-            'is_space_reporting_logical': svm_obj.is_space_reporting_logical if hasattr(svm_obj, 'is_space_reporting_logical') else None,
-            'is_space_enforcement_logical': svm_obj.is_space_enforcement_logical if hasattr(svm_obj, 'is_space_enforcement_logical') else None
-        }
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('modify_svm', svm_config, cluster_response=cluster_response, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
@@ -448,20 +348,11 @@ def modify_svm(svm_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=error_msg)
-        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -504,33 +395,12 @@ def fcp_create(svm_config):
         print(f"[+] FCP service created successfully!")
         print(f"[*] Status admin: {status_text}")
         
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving FCP service information from cluster...")
-        fcp_services = list(FcpService.get_collection(svm={'name': svm_name}))
-        
-        cluster_response = None
-        if fcp_services:
-            fcp_svc = fcp_services[0]
-            fcp_svc.get()
-            cluster_response = {
-                'svm': {'name': svm_name},
-                'enabled': fcp_svc.enabled if hasattr(fcp_svc, 'enabled') else None,
-                'target_name': fcp_svc.target.name if hasattr(fcp_svc, 'target') and fcp_svc.target else None
-            }
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('fcp_create', svm_config, cluster_response=cluster_response, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during FCP creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response else str(error)}"
-        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 409:
             print(f"[ERROR] FCP service may already exist on this SVM")
@@ -544,10 +414,6 @@ def fcp_create(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during FCP creation: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -601,42 +467,12 @@ def configure_protocols(svm_config):
         svm_obj.patch()
         
         print(f"[+] Protocol configuration applied successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving protocol configuration from cluster...")
-        svm_updated = Svm.find(name=svm_name)
-        svm_data = Svm(uuid=svm_updated.uuid)
-        svm_data.get()
-        
-        # Extraer configuración de protocolos real de la cabina
-        cluster_response = {
-            'svm_name': svm_name,
-            'protocols': {}
-        }
-        
-        # Obtener estado real de cada protocolo
-        for protocol in protocols_config.keys():
-            protocol_name = protocol.lower()
-            if hasattr(svm_data, protocol_name):
-                protocol_obj = getattr(svm_data, protocol_name)
-                if protocol_obj and hasattr(protocol_obj, 'allowed'):
-                    cluster_response['protocols'][protocol_name] = {
-                        'allowed': protocol_obj.allowed
-                    }
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('configure_protocols', svm_config, cluster_response=cluster_response, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during protocol configuration")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 400:
             print(f"[ERROR] Bad request - Invalid protocol configuration")
@@ -649,10 +485,6 @@ def configure_protocols(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during protocol configuration: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -723,36 +555,6 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"    - Protocol: {data_protocol}")
             print(f"    - Status Admin: {status_admin}")
         
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving network interfaces information from cluster...")
-        fc_interfaces = list(FcInterface.get_collection(svm={'name': svm_name}))
-        
-        cluster_response = {
-            'svm_name': svm_name,
-            'interfaces': []
-        }
-        
-        for fc_if in fc_interfaces:
-            fc_if.get()
-            interface_data = {
-                'uuid': fc_if.uuid if hasattr(fc_if, 'uuid') else None,
-                'name': fc_if.name if hasattr(fc_if, 'name') else None,
-                'data_protocol': fc_if.data_protocol if hasattr(fc_if, 'data_protocol') else None,
-                'enabled': fc_if.enabled if hasattr(fc_if, 'enabled') else None,
-                'location': {
-                    'home_node': fc_if.location.home_node.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_node') else None,
-                    'home_port': fc_if.location.home_port.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_port') else None
-                } if hasattr(fc_if, 'location') else None,
-                'wwpn': fc_if.wwpn if hasattr(fc_if, 'wwpn') else None
-            }
-            cluster_response['interfaces'].append(interface_data)
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('create_network_interfaces', 
-                          {'svm_name': svm_name, 'interfaces': net_interfaces_config}, 
-                          cluster_response=cluster_response, 
-                          status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
@@ -760,20 +562,11 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='ERROR', error_message=error_msg)
-        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('create_network_interfaces', {'svm_name': svm_name, 'interfaces': net_interfaces_config}, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -863,47 +656,12 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
-        # OBTENER DATOS REALES DE LA CABINA (SHOW)
-        print(f"[*] Retrieving management interface information from cluster...")
-        ip_interfaces = list(IpInterface.get_collection(svm={'name': svm_name}, name=lif))
-        
-        cluster_response = None
-        if ip_interfaces:
-            mgmt_if = ip_interfaces[0]
-            mgmt_if.get()
-            cluster_response = {
-                'uuid': mgmt_if.uuid if hasattr(mgmt_if, 'uuid') else None,
-                'name': mgmt_if.name if hasattr(mgmt_if, 'name') else None,
-                'enabled': mgmt_if.enabled if hasattr(mgmt_if, 'enabled') else None,
-                'ip': {
-                    'address': mgmt_if.ip.address if hasattr(mgmt_if, 'ip') and mgmt_if.ip else None,
-                    'netmask': mgmt_if.ip.netmask if hasattr(mgmt_if, 'ip') and mgmt_if.ip else None
-                } if hasattr(mgmt_if, 'ip') else None,
-                'location': {
-                    'home_node': mgmt_if.location.home_node.name if hasattr(mgmt_if, 'location') and mgmt_if.location and hasattr(mgmt_if.location, 'home_node') else None,
-                    'home_port': mgmt_if.location.home_port.name if hasattr(mgmt_if, 'location') and mgmt_if.location and hasattr(mgmt_if.location, 'home_port') else None,
-                    'auto_revert': mgmt_if.location.auto_revert if hasattr(mgmt_if, 'location') and mgmt_if.location else None
-                } if hasattr(mgmt_if, 'location') else None,
-                'service_policy': mgmt_if.service_policy.name if hasattr(mgmt_if, 'service_policy') and mgmt_if.service_policy else None
-            }
-        
-        # GUARDAR BACKUP CON DATOS REALES DE LA CABINA
-        save_operation_log('create_management_interface', 
-                          {'svm_name': svm_name, 'mgmt_config': mgmt_config}, 
-                          cluster_response=cluster_response, 
-                          status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response and error.http_err_response.http_response else str(error)}"
-        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='ERROR', error_message=error_msg)
-        
         if error.http_err_response and error.http_err_response.http_response:
             print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
         else:
@@ -913,10 +671,6 @@ def create_management_interface(svm_name, mgmt_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('create_management_interface', {'svm_name': svm_name, 'mgmt_config': mgmt_config}, status='ERROR', error_message=str(e))
-        
         return False
 
 # ============================================================================
