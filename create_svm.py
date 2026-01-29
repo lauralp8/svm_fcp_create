@@ -33,7 +33,7 @@ import yaml
 import json
 import os
 from datetime import datetime
-print("Imports successful")
+
 
 # ============================================================================
 # SCRIPT INITIALIZATION
@@ -43,328 +43,6 @@ print("  NetApp ONTAP SVM Creation Script")
 print("  Using NetApp ONTAP Python Client Library")
 print("="*70)
 print("\n[*] Initializing SVM creation workflow...")
-
-
-# ============================================================================
-# LOGGING AND BACKUP FUNCTIONS
-# ============================================================================
-
-def save_operation_log(operation_name, config_sent, cluster_response=None, status="SUCCESS", error_message=None):
-    """
-    Guarda un log/backup de cada operación con datos REALES obtenidos de la cabina NetApp
-    
-    Crea una carpeta 'logs' y guarda archivos JSON con:
-    - Configuración enviada desde config.yaml
-    - Respuesta REAL de la cabina obtenida con GET
-    - Timestamp de la operación
-    - Estado (SUCCESS/ERROR)
-    
-    Args:
-        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
-        config_sent (dict): Configuración enviada desde config.yaml
-        cluster_response (dict): Datos REALES obtenidos de la cabina con GET/show
-        status (str): Estado de la operación ('SUCCESS' o 'ERROR')
-        error_message (str): Mensaje de error si status='ERROR'
-    
-    Returns:
-        str: Ruta del archivo de log creado
-    
-    Ejemplo:
-        # Después de crear SVM, obtener datos reales y guardar
-        svm_data = get_svm_from_cluster(svm_name)
-        save_operation_log('create_svm', svm_config, cluster_response=svm_data, status='SUCCESS')
-    
-    Archivo generado:
-        logs/create_svm_20260129_143025_SUCCESS.json
-    """
-    try:
-        # Crear carpeta logs si no existe
-        logs_dir = "logs"
-        if not os.path.exists(logs_dir):
-            os.makedirs(logs_dir)
-            print(f"[LOG] Created logs directory: {logs_dir}/")
-        
-        # Generar timestamp para el nombre del archivo
-        # Formato: YYYYMMDD_HHMMSS (ej: 20260129_143025)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Construir nombre del archivo
-        # Formato: operation_name_timestamp_status.json
-        # Ejemplo: create_svm_20260129_143025_SUCCESS.json
-        filename = f"{logs_dir}/{operation_name}_{timestamp}_{status}.json"
-        
-        # Preparar contenido del log con toda la información
-        log_content = {
-            "operation": operation_name,
-            "timestamp": datetime.now().isoformat(),
-            "status": status,
-            "configuration_sent": config_sent,
-            "cluster_response": cluster_response,  # Datos REALES de la cabina
-            "error_message": error_message
-        }
-        
-        # Guardar en formato JSON con indentación para fácil lectura
-        with open(filename, 'w', encoding='utf-8') as log_file:
-            json.dump(log_content, log_file, indent=2, ensure_ascii=False)
-        
-        print(f"[LOG] Backup saved: {filename}")
-        return filename
-    
-    except Exception as e:
-        print(f"[WARNING] Could not save operation log: {str(e)}")
-        return None
-
-
-def get_svm_details(svm_name):
-    """
-    Obtiene detalles completos de una SVM desde la cabina usando GET
-    
-    Según documentación NetApp ONTAP REST API:
-    GET /api/svm/svms/{uuid}
-    
-    Args:
-        svm_name (str): Nombre de la SVM a consultar
-    
-    Returns:
-        dict: Diccionario con todos los atributos de la SVM desde la cabina
-    """
-    try:
-        # Buscar la SVM por nombre
-        svm = Svm.find(name=svm_name)
-        if not svm:
-            return None
-        
-        # Obtener objeto completo con todos los detalles
-        svm_obj = Svm(uuid=svm.uuid)
-        svm_obj.get()
-        
-        # Extraer todos los campos relevantes según la API
-        svm_details = {
-            'uuid': svm_obj.uuid,
-            'name': svm_obj.name,
-            'state': svm_obj.state if hasattr(svm_obj, 'state') else None,
-            'ipspace': {
-                'name': svm_obj.ipspace.name if hasattr(svm_obj, 'ipspace') and svm_obj.ipspace else None,
-                'uuid': svm_obj.ipspace.uuid if hasattr(svm_obj, 'ipspace') and svm_obj.ipspace and hasattr(svm_obj.ipspace, 'uuid') else None
-            } if hasattr(svm_obj, 'ipspace') and svm_obj.ipspace else None,
-            'language': svm_obj.language if hasattr(svm_obj, 'language') else None,
-            'security_style': svm_obj.security_style if hasattr(svm_obj, 'security_style') else None,
-            'aggregates': [
-                {
-                    'name': agg.name if hasattr(agg, 'name') else None,
-                    'uuid': agg.uuid if hasattr(agg, 'uuid') else None
-                } for agg in svm_obj.aggregates
-            ] if hasattr(svm_obj, 'aggregates') and svm_obj.aggregates else [],
-            'is_space_reporting_logical': svm_obj.is_space_reporting_logical if hasattr(svm_obj, 'is_space_reporting_logical') else None,
-            'is_space_enforcement_logical': svm_obj.is_space_enforcement_logical if hasattr(svm_obj, 'is_space_enforcement_logical') else None
-        }
-        
-        return svm_details
-    
-    except Exception as e:
-        print(f"[WARNING] Could not retrieve SVM details: {str(e)}")
-        return None
-
-
-def get_fcp_service_details(svm_name):
-    """
-    Obtiene detalles del servicio FCP desde la cabina usando GET
-    
-    Según documentación NetApp ONTAP REST API:
-    GET /api/protocols/san/fcp/services
-    
-    Args:
-        svm_name (str): Nombre de la SVM
-    
-    Returns:
-        dict: Diccionario con atributos del servicio FCP desde la cabina
-    """
-    try:
-        # Obtener colección de servicios FCP para la SVM
-        fcp_services = list(FcpService.get_collection(svm={'name': svm_name}))
-        
-        if not fcp_services:
-            return None
-        
-        # Obtener detalles completos del primer servicio
-        fcp_svc = fcp_services[0]
-        fcp_svc.get()
-        
-        fcp_details = {
-            'svm': {'name': svm_name},
-            'enabled': fcp_svc.enabled if hasattr(fcp_svc, 'enabled') else None,
-            'target': {
-                'name': fcp_svc.target.name if hasattr(fcp_svc, 'target') and fcp_svc.target and hasattr(fcp_svc.target, 'name') else None
-            } if hasattr(fcp_svc, 'target') and fcp_svc.target else None
-        }
-        
-        return fcp_details
-    
-    except Exception as e:
-        print(f"[WARNING] Could not retrieve FCP service details: {str(e)}")
-        return None
-
-
-def get_fc_interfaces_details(svm_name):
-    """
-    Obtiene detalles de todas las interfaces FC desde la cabina usando GET
-    
-    Según documentación NetApp ONTAP REST API:
-    GET /api/network/fc/interfaces
-    
-    Args:
-        svm_name (str): Nombre de la SVM
-    
-    Returns:
-        list: Lista de diccionarios con atributos de cada interfaz FC
-    """
-    try:
-        # Obtener colección de interfaces FC para la SVM
-        fc_interfaces = list(FcInterface.get_collection(svm={'name': svm_name}))
-        
-        interfaces_details = []
-        
-        for fc_if in fc_interfaces:
-            # Obtener detalles completos de cada interfaz
-            fc_if.get()
-            
-            interface_data = {
-                'uuid': fc_if.uuid if hasattr(fc_if, 'uuid') else None,
-                'name': fc_if.name if hasattr(fc_if, 'name') else None,
-                'svm': {'name': svm_name},
-                'data_protocol': fc_if.data_protocol if hasattr(fc_if, 'data_protocol') else None,
-                'enabled': fc_if.enabled if hasattr(fc_if, 'enabled') else None,
-                'wwpn': fc_if.wwpn if hasattr(fc_if, 'wwpn') else None,
-                'location': {
-                    'home_node': {
-                        'name': fc_if.location.home_node.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_node') and fc_if.location.home_node else None
-                    },
-                    'home_port': {
-                        'name': fc_if.location.home_port.name if hasattr(fc_if, 'location') and fc_if.location and hasattr(fc_if.location, 'home_port') and fc_if.location.home_port else None
-                    }
-                } if hasattr(fc_if, 'location') and fc_if.location else None
-            }
-            
-            interfaces_details.append(interface_data)
-        
-        return interfaces_details
-    
-    except Exception as e:
-        print(f"[WARNING] Could not retrieve FC interfaces details: {str(e)}")
-        return []
-
-
-def get_ip_interface_details(svm_name, lif_name):
-    """
-    Obtiene detalles de una interfaz IP (management) desde la cabina usando GET
-    
-    Según documentación NetApp ONTAP REST API:
-    GET /api/network/ip/interfaces
-    https://library.netapp.com/ecmdocs/ECMLP3351667/html/resources/ip_interface.html
-    
-    Args:
-        svm_name (str): Nombre de la SVM
-        lif_name (str): Nombre de la interfaz IP
-    
-    Returns:
-        dict: Diccionario con atributos de la interfaz IP desde la cabina
-    """
-    try:
-        # Obtener colección de interfaces IP filtrada por SVM y nombre
-        ip_interfaces = list(IpInterface.get_collection(
-            svm={'name': svm_name},
-            name=lif_name
-        ))
-        
-        if not ip_interfaces:
-            return None
-        
-        # Obtener detalles completos de la interfaz
-        ip_if = ip_interfaces[0]
-        ip_if.get()
-        
-        # Extraer todos los campos según documentación NetApp
-        interface_details = {
-            'uuid': ip_if.uuid if hasattr(ip_if, 'uuid') else None,
-            'name': ip_if.name if hasattr(ip_if, 'name') else None,
-            'svm': {
-                'name': ip_if.svm.name if hasattr(ip_if, 'svm') and ip_if.svm and hasattr(ip_if.svm, 'name') else svm_name,
-                'uuid': ip_if.svm.uuid if hasattr(ip_if, 'svm') and ip_if.svm and hasattr(ip_if.svm, 'uuid') else None
-            } if hasattr(ip_if, 'svm') and ip_if.svm else {'name': svm_name},
-            'enabled': ip_if.enabled if hasattr(ip_if, 'enabled') else None,
-            'state': ip_if.state if hasattr(ip_if, 'state') else None,
-            'ip': {
-                'address': ip_if.ip.address if hasattr(ip_if, 'ip') and ip_if.ip and hasattr(ip_if.ip, 'address') else None,
-                'netmask': ip_if.ip.netmask if hasattr(ip_if, 'ip') and ip_if.ip and hasattr(ip_if.ip, 'netmask') else None
-            } if hasattr(ip_if, 'ip') and ip_if.ip else None,
-            'location': {
-                'home_node': {
-                    'name': ip_if.location.home_node.name if hasattr(ip_if, 'location') and ip_if.location and hasattr(ip_if.location, 'home_node') and ip_if.location.home_node else None
-                },
-                'home_port': {
-                    'name': ip_if.location.home_port.name if hasattr(ip_if, 'location') and ip_if.location and hasattr(ip_if.location, 'home_port') and ip_if.location.home_port else None
-                },
-                'auto_revert': ip_if.location.auto_revert if hasattr(ip_if, 'location') and ip_if.location and hasattr(ip_if.location, 'auto_revert') else None
-            } if hasattr(ip_if, 'location') and ip_if.location else None,
-            'service_policy': {
-                'name': ip_if.service_policy.name if hasattr(ip_if, 'service_policy') and ip_if.service_policy and hasattr(ip_if.service_policy, 'name') else None,
-                'uuid': ip_if.service_policy.uuid if hasattr(ip_if, 'service_policy') and ip_if.service_policy and hasattr(ip_if.service_policy, 'uuid') else None
-            } if hasattr(ip_if, 'service_policy') and ip_if.service_policy else None
-        }
-        
-        return interface_details
-    
-    except Exception as e:
-        print(f"[WARNING] Could not retrieve IP interface details: {str(e)}")
-        return None
-
-
-def get_protocols_details(svm_name):
-    """
-    Obtiene configuración de protocolos desde la cabina usando GET
-    
-    Según documentación NetApp ONTAP REST API:
-    GET /api/svm/svms/{uuid}
-    
-    Args:
-        svm_name (str): Nombre de la SVM
-    
-    Returns:
-        dict: Diccionario con configuración de protocolos desde la cabina
-    """
-    try:
-        # Buscar la SVM
-        svm = Svm.find(name=svm_name)
-        if not svm:
-            return None
-        
-        # Obtener objeto completo
-        svm_obj = Svm(uuid=svm.uuid)
-        svm_obj.get()
-        
-        # Extraer configuración de protocolos
-        protocols_details = {
-            'svm_name': svm_name,
-            'protocols': {}
-        }
-        
-        # Lista de protocolos soportados
-        protocol_list = ['nfs', 'cifs', 'fcp', 'iscsi', 'nvme']
-        
-        for protocol_name in protocol_list:
-            if hasattr(svm_obj, protocol_name):
-                protocol_obj = getattr(svm_obj, protocol_name)
-                if protocol_obj and hasattr(protocol_obj, 'allowed'):
-                    protocols_details['protocols'][protocol_name] = {
-                        'allowed': protocol_obj.allowed,
-                        'enabled': protocol_obj.enabled if hasattr(protocol_obj, 'enabled') else None
-                    }
-        
-        return protocols_details
-    
-    except Exception as e:
-        print(f"[WARNING] Could not retrieve protocols details: {str(e)}")
-        return None
 
 
 # ============================================================================
@@ -584,11 +262,6 @@ def create_svm(svm_config):
         new_svm.post()
         
         print(f"[+] SVM '{svm_name}' created successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_svm_details(svm_name)
-        save_operation_log('create_svm', svm_config, cluster_response=cluster_data, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
@@ -668,11 +341,6 @@ def modify_svm(svm_config):
         svm.patch()
         
         print(f"[+] SVM '{svm_name}' modified successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_svm_details(svm_name)
-        save_operation_log('modify_svm', svm_config, cluster_response=cluster_data, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
@@ -680,20 +348,11 @@ def modify_svm(svm_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=error_msg)
-        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('modify_svm', svm_config, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -736,20 +395,12 @@ def fcp_create(svm_config):
         print(f"[+] FCP service created successfully!")
         print(f"[*] Status admin: {status_text}")
         
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_fcp_service_details(svm_name)
-        save_operation_log('fcp_create', svm_config, cluster_response=cluster_data, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during FCP creation")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response else str(error)}"
-        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 409:
             print(f"[ERROR] FCP service may already exist on this SVM")
@@ -763,10 +414,6 @@ def fcp_create(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during FCP creation: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('fcp_create', svm_config, status='ERROR', error_message=str(e))
-        
         return False
 
 
@@ -820,21 +467,12 @@ def configure_protocols(svm_config):
         svm_obj.patch()
         
         print(f"[+] Protocol configuration applied successfully!")
-        
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_protocols_details(svm_name)
-        save_operation_log('configure_protocols', svm_config, cluster_response=cluster_data, status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error during protocol configuration")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=error_msg)
         
         if error.status_code == 400:
             print(f"[ERROR] Bad request - Invalid protocol configuration")
@@ -847,9 +485,6 @@ def configure_protocols(svm_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error during protocol configuration: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('configure_protocols', svm_config, status='ERROR', error_message=str(e))
         return False
 
 
@@ -920,13 +555,6 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             print(f"    - Protocol: {data_protocol}")
             print(f"    - Status Admin: {status_admin}")
         
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_fc_interfaces_details(svm_name)
-        save_operation_log('create_network_interfaces', 
-                          {'svm_name': svm_name, 'interfaces': net_interfaces_config}, 
-                          cluster_response=cluster_data, 
-                          status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
@@ -934,26 +562,11 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
         print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text}"
-        save_operation_log('create_network_interfaces', 
-                          {'svm_name': svm_name, 'interfaces': net_interfaces_config}, 
-                          status='ERROR', 
-                          error_message=error_msg)
-        
         return False
     
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('create_network_interfaces', 
-                          {'svm_name': svm_name, 'interfaces': net_interfaces_config}, 
-                          status='ERROR', 
-                          error_message=str(e))
-        
         return False
 
 
@@ -1043,27 +656,12 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
-        # OBTENER DATOS REALES DE LA CABINA Y GUARDAR LOG
-        cluster_data = get_ip_interface_details(svm_name, lif)
-        save_operation_log('create_management_interface', 
-                          {'svm_name': svm_name, 'mgmt_config': mgmt_config}, 
-                          cluster_response=cluster_data, 
-                          status='SUCCESS')
-        
         return True
     
     # CONTROL DE ERRORES
     except NetAppRestError as error:
         print(f"[ERROR] NetApp API error")
         print(f"[ERROR] HTTP Status: {error.status_code}")
-        
-        # Guardar log de error
-        error_msg = f"HTTP {error.status_code}: {error.http_err_response.http_response.text if error.http_err_response and error.http_err_response.http_response else str(error)}"
-        save_operation_log('create_management_interface', 
-                          {'svm_name': svm_name, 'mgmt_config': mgmt_config}, 
-                          status='ERROR', 
-                          error_message=error_msg)
-        
         if error.http_err_response and error.http_err_response.http_response:
             print(f"[ERROR] Details: {error.http_err_response.http_response.text}")
         else:
@@ -1073,12 +671,6 @@ def create_management_interface(svm_name, mgmt_config):
     except Exception as e:
         print(f"[ERROR] Unexpected error: {type(e).__name__}")
         print(f"[ERROR] Details: {str(e)}")
-        
-        # Guardar log de error
-        save_operation_log('create_management_interface', 
-                          {'svm_name': svm_name, 'mgmt_config': mgmt_config}, 
-                          status='ERROR', 
-                          error_message=str(e))
         return False
 
 # ============================================================================
