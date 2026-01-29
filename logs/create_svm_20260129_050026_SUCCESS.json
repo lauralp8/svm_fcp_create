@@ -1,0 +1,42 @@
+{
+  "operation": "create_svm",
+  "timestamp": "2026-01-29T05:00:26.229922",
+  "status": "SUCCESS",
+  "configuration_sent": {
+    "name": "svm_1_cluster",
+    "ipspace": "Default",
+    "aggregate": "cluster1_01_SSD_1",
+    "language": "c.utf_8",
+    "security_style": "unix",
+    "aggr_list": [
+      "cluster1_01_SSD_1",
+      "cluster1_02_SSD_1"
+    ],
+    "is_space_reporting_logical": true,
+    "is_space_enforcement_logical": true,
+    "fcp_status_admin": "up",
+    "protocols": {
+      "cifs": false,
+      "nfs": true,
+      "ndmp": false,
+      "s3": false,
+      "fcp": true,
+      "iscsi": true
+    }
+  },
+  "cluster_response": {
+    "uuid": "4ce0aa86-fcf9-11f0-80e5-005056b0899f",
+    "name": "svm_1_cluster",
+    "state": "running",
+    "ipspace": "Default",
+    "language": "c.utf_8",
+    "security_style": null,
+    "aggregates": [
+      {
+        "name": "cluster1_01_SSD_1",
+        "uuid": "468c1494-b888-4575-94d5-ea92af8b3b4f"
+      }
+    ]
+  },
+  "error_message": null
+}
