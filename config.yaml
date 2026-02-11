@@ -24,7 +24,7 @@ svm:
   is_space_enforcement_logical: true
 
   # Configuración del servicio FCP
-  fcp_status_admin: up  # Opciones: up, down
+  fcp_status_admin: up  
   
   # Protocolos permitidos
   protocols:
@@ -41,19 +41,19 @@ net_interfaces:
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 1b
-    status_admin: down  # Opciones: up, down
+    status_admin: down 
   
   - lif: lif_2_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0b
-    status_admin: up  # Opciones: up, down
+    status_admin: up  
   
   - lif: lif_3_cluster1
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 0a
-    status_admin: up  # Opciones: up, down
+    status_admin: up  
 
 # Configuración de la interfaz de gestión
 mgmt_interface:
@@ -63,7 +63,7 @@ mgmt_interface:
   netmask: 255.255.255.0
   home_node: cluster1-02
   home_port: e0c
-  status_admin: up  # Opciones: up, down
+  status_admin: up  
   auto_revert: false
   failover_group: Default
 
