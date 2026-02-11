@@ -1,10 +1,10 @@
-# NetApp ONTAP SVM Creation Script
+# NetApp ONTAP FCP SVM Creation Script
 
-Script automatizado para la creación y configuración completa de Storage Virtual Machines (SVMs) en NetApp ONTAP usando la API REST oficial.
+Script automatizado para la creación y configuración completa de Storage Virtual Machines (SVMs) con protocolo FCP en NetApp ONTAP usando la API REST oficial.
 
 ## Descripción
 
-Este script de Python automatiza todo el proceso de creación de una SVM en NetApp ONTAP, incluyendo:
+Este script de Python automatiza todo el proceso de creación de una SVM configurada para protocolo FCP (Fibre Channel Protocol) en NetApp ONTAP, incluyendo:
 
 - Creación de la SVM con configuración básica
 - Modificación de parámetros de espacio lógico
@@ -31,91 +31,58 @@ pip install -r requirements.txt
 ## Estructura del Proyecto
 
 ```
-CreateSVM/
-├── create_svm.py      # Script principal
+svm_fcp_create/
+├── create_fcp_svm.py  # Script principal
 ├── config.yaml        # Archivo de configuración
 ├── requirements.txt   # Dependencias Python
 ├── README.md          # Esta documentación
 └── logs/              # Logs JSON generados automáticamente
-    ├── create_svm_YYYYMMDD_HHMMSS.json
-    ├── modify_svm_YYYYMMDD_HHMMSS.json
-    ├── fcp_create_YYYYMMDD_HHMMSS.json
-    ├── configure_protocols_YYYYMMDD_HHMMSS.json
-    ├── create_network_interfaces_YYYYMMDD_HHMMSS.json
-    ├── create_management_interface_YYYYMMDD_HHMMSS.json
-    └── event_logs_YYYYMMDD_HHMMSS.json
 ```
 
 ## Configuración
 
-Edita el archivo `config.yaml` con los parámetros de tu entorno:
+Edita el archivo `config.yaml` con los parámetros de tu entorno. El archivo incluye las siguientes secciones:
 
-### 1. Configuración del Cluster
-```yaml
-cluster:
-  host: cluster1.demo.netapp.com
-  username: admin
-  password: Netapp1!
-```
+### cluster
+Configuración de conexión al cluster NetApp:
+- `host`: Hostname o IP del cluster
+- `username`: Usuario administrador
+- `password`: Contraseña
 
-### 2. Configuración de la SVM
-```yaml
-svm: 
-  name: svm_demo2
-  ipspace: Default  
-  aggregate: cluster1_01_SSD_1
-  language: c.utf_8
-  security_style: unix
-  
-  # Parámetros de modificación
-  aggr_list:
-    - cluster1_01_SSD_1
-    - cluster1_02_SSD_1
-  is_space_reporting_logical: true
-  is_space_enforcement_logical: true
-  
-  # Parámetros FCP
-  fcp_status_admin: true  # true = up, false = down
-  
-  # Protocolos permitidos
-  protocols:
-    cifs: false
-    nfs: false
-    fcp: true
-    iscsi: true
-```
+### svm
+Configuración de la Storage Virtual Machine:
+- `name`: Nombre de la SVM a crear
+- `ipspace`: IPspace (default: Default)
+- `aggregate`: Agregado para volumen raíz
+- `language`: Código de idioma (default: c.utf_8)
+- `security_style`: Estilo de seguridad (unix/ntfs/mixed)
+- `aggr_list`: Lista de agregados permitidos
+- `is_space_reporting_logical`: Reporte de espacio lógico (true/false)
+- `is_space_enforcement_logical`: Enforcement de espacio lógico (true/false)
+- `fcp_status_admin`: Estado administrativo del servicio FCP (up/down)
+- `protocols`: Diccionario de protocolos permitidos (cifs, nfs, fcp, iscsi, etc.)
 
-### 3. Interfaces de Red FCP
-Puedes definir múltiples interfaces FCP:
+### net_interfaces
+Lista de interfaces de red FCP. Cada interfaz incluye:
+- `lif`: Nombre de la interfaz lógica
+- `data_protocol`: Protocolo de datos (fcp)
+- `home_node`: Nodo home
+- `home_port`: Puerto home (ejemplo: 1a, 1b, 0a, 0b)
+- `status_admin`: Estado administrativo (up/down)
 
-```yaml
-net_interfaces:
-  - lif: LIF1
-    data_protocol: fcp
-    home_node: cluster1-01
-    home_port: e1a  # Debe incluir prefijo 'e' para ethernet
-    status_admin: true
-  
-  - lif: LIF2
-    data_protocol: fcp
-    home_node: cluster1-02
-    home_port: e1b
-    status_admin: true
-```
+### mgmt_interface
+Interfaz de gestión IP. Incluye:
+- `lif`: Nombre de la interfaz de management
+- `service_policy`: Service policy (default-management)
+- `address`: Dirección IP
+- `netmask`: Máscara de red
+- `home_node`: Nodo home
+- `home_port`: Puerto home (ejemplo: e0c, e0a)
+- `status_admin`: Estado administrativo (up/down)
+- `auto_revert`: Auto-revert a home port (true/false)
+- `failover_group`: Grupo de failover (opcional)
 
-### 4. Interfaz de Management
-```yaml
-mgmt_interface:
-  lif: lif_mgmt
-  service_policy: default-management
-  address: 192.168.0.1
-  netmask: 255.255.255.0
-  home_node: cluster1-01
-  home_port: e0a
-  status_admin: true
-  auto_revert: false
-  failover_group: Default
-```
+Para ver ejemplos de configuración, consulta el archivo `config.yaml` incluido en el proyecto.
 
 ## Sistema de Logging
 
@@ -163,23 +130,12 @@ El script implementa un sistema de logging automático que captura datos REALES 
    - Backup de eventos del cluster (últimos 100)
    - Index, timestamp, nodo, severidad, evento
 
-### Ejemplo de Uso de Logs
-```bash
-# Ver último log de creación de SVM
-cat logs/create_svm_*.json | tail -1 | jq .
-
-# Extraer UUIDs de todas las SVMs creadas
-cat logs/create_svm_*.json | jq -r '.uuid'
-
-# Ver event logs más recientes
-cat logs/event_logs_*.json | tail -1 | jq '.events[] | select(.severity=="alert")'
-```
 
 ## Uso
 
 ### Ejecución Básica
 ```bash
-python create_svm.py
+python create_fcp_svm.py
 ```
 
 ### Flujo de Ejecución
@@ -195,25 +151,6 @@ python create_svm.py
 9. **Event Logs Backup** - Obtiene logs de eventos del cluster → Guarda log
 10. **Finalización** - Todos los logs disponibles en directorio `logs/`
 
-### Ejemplo de Salida
-```
-Starting SVM creation script...
-Config.yaml loader: config.yaml
-Configuration loaded successfully
-Target cluster: cluster1.demo.netapp.com
-SVM to create: svm_demo2
-
-[*] Establishing connection to cluster: cluster1.demo.netapp.com
-[+] Connection successful!
-[+] Cluster name: cluster1
-[+] ONTAP version: 9.14.1
-
-[*] Creating SVM: svm_demo2
-[+] SVM 'svm_demo2' created successfully!
-
-[SUCCESS] SVM creation completed!
-...
-```
 
 ## API REST de NetApp
 
@@ -237,86 +174,281 @@ Este script utiliza la **API REST oficial de NetApp ONTAP**:
 
 **Documentación oficial**: [NetApp ONTAP REST API](https://library.netapp.com/ecmdocs/ECMLP3351667/html/)
 
-## Notas Importantes
+## Registro de Funciones
 
-### Failover Policy y Firewall Policy
+### Funciones de Configuración y Utilidades
 
-**IMPORTANTE**: En ONTAP moderno, estos parámetros están controlados automáticamente por el `service_policy`:
+#### config_loader(path="config.yaml")
+Carga y valida el archivo de configuración YAML.
+- **Entrada**: Ruta al archivo config.yaml
+- **Salida**: Diccionario con configuración o None si falla
+- **Validaciones**: Verifica estructura y secciones obligatorias (cluster, svm)
 
-- `failover_policy` - **NO configurable directamente**. El service-policy lo determina automáticamente.
-- `firewall_policy` - **DEPRECATED**. Ya no se usa en ONTAP 9.6+.
+#### save_to_log(operation_name, data)
+Guarda datos en archivo JSON con timestamp en carpeta logs/.
+- **Entrada**: Nombre de operación y diccionario de datos
+- **Salida**: Ruta del archivo creado
+- **Formato**: `logs/operacion_YYYYMMDD_HHMMSS.json`
 
-Cuando usas `service_policy: default-management`, ONTAP asigna:
-- `failover_policy: system-defined` (equivale a `broadcast_domain_only`)
-- `firewall_policy: mgmt` (valor legacy, ignorado)
+#### cluster_connection(cluster_config)
+Establece y verifica conexión con el cluster NetApp ONTAP.
+- **Entrada**: Diccionario con host, username, password
+- **Salida**: True si conexión exitosa, False si falla
+- **Validaciones**: Prueba acceso con consulta al cluster
 
-### Prefijos de Puertos
+### Funciones de Gestión de SVM
 
-Los puertos deben incluir su prefijo:
-- **Ethernet**: `e0a`, `e1a`, `e2a`, etc.
-- **FCoE**: `a0a`, `a0b`, etc.
+#### create_svm(svm_config)
+Crea una Storage Virtual Machine con parámetros básicos.
+- **Entrada**: Configuración de SVM desde config.yaml
+- **Salida**: True si se creó, False si error
+- **POST**: `/api/svm/svms`
+- **Log**: `create_svm_YYYYMMDD_HHMMSS.json`
 
-### Protocolos FCP vs NFS/CIFS
+#### modify_svm(svm_config)
+Modifica parámetros de espacio lógico y lista de agregados.
+- **Entrada**: Configuración de SVM con aggr_list y parámetros de espacio
+- **Salida**: True si modificación exitosa, False si error
+- **PATCH**: `/api/svm/svms/{uuid}`
+- **Log**: `modify_svm_YYYYMMDD_HHMMSS.json`
 
-- **FCP/FC-NVMe**: Usan `FcInterface` (no requieren IP)
-- **NFS/CIFS/iSCSI**: Usan `IpInterface` (requieren IP address)
+### Funciones de Configuración FCP
 
-## Troubleshooting
+#### fcp_create(svm_config)
+Crea y habilita el servicio FCP en la SVM.
+- **Entrada**: Configuración de SVM con fcp_status_admin
+- **Salida**: True si se creó, False si error
+- **POST**: `/api/protocols/san/fcp/services`
+- **Log**: `fcp_create_YYYYMMDD_HHMMSS.json`
 
-### Error: "SVM already exists"
+#### configure_protocols(svm_config)
+Configura protocolos permitidos y no permitidos en la SVM.
+- **Entrada**: Configuración de SVM con diccionario de protocolos
+- **Salida**: True si configuración exitosa, False si error
+- **PATCH**: `/api/svm/svms/{uuid}`
+- **Log**: `configure_protocols_YYYYMMDD_HHMMSS.json`
+
+### Funciones de Interfaces de Red
+
+#### create_network_interfaces(svm_name, net_interfaces_config)
+Crea múltiples interfaces de red FCP (LIFs FC).
+- **Entrada**: Nombre de SVM y lista de configuraciones de interfaces
+- **Salida**: True si todas se crearon, False si error
+- **POST**: `/api/network/fc/interfaces`
+- **Log**: `create_network_interfaces_YYYYMMDD_HHMMSS.json`
+
+#### create_management_interface(svm_name, mgmt_config)
+Crea la interfaz de gestión IP con service policy.
+- **Entrada**: Nombre de SVM y configuración de interfaz management
+- **Salida**: True si se creó, False si error
+- **POST**: `/api/network/ip/interfaces`
+- **Log**: `create_management_interface_YYYYMMDD_HHMMSS.json`
+
+### Funciones de Monitoreo
+
+#### get_event_logs(max_records=100)
+Obtiene y respalda los logs de eventos del cluster.
+- **Entrada**: Número máximo de registros (default: 100)
+- **Salida**: True si se obtuvieron, False si error
+- **GET**: `/api/support/ems/events`
+- **Log**: `event_logs_YYYYMMDD_HHMMSS.json`
+
+## Registro de Errores
+
+### Errores de Configuración
+
+#### ERR-001: Archivo de configuración no encontrado
 ```
-[ERROR] SVM 'svm_name' already exists with UUID: xxx
+[ERROR] File not found: config.yaml
 ```
-**Solución**: Cambia el nombre de la SVM en `config.yaml` o elimina la SVM existente.
+**Causa**: El archivo config.yaml no existe en el directorio actual  
+**Solución**: Verificar que config.yaml existe en la misma carpeta que el script
 
-### Error: "Aggregate doesn't exist"
+#### ERR-002: YAML inválido
 ```
-[ERROR] - Aggregate 'aggr1' doesn't exist (check aggregate name)
+[ERROR] Invalid YAML format in 'config.yaml'
 ```
-**Solución**: Verifica los agregados disponibles con `storage aggregate show`.
+**Causa**: Sintaxis YAML incorrecta (indentación, formato)  
+**Solución**: Validar sintaxis YAML, verificar espacios e indentación
 
-### Error: "Invalid port name"
+#### ERR-003: Configuración incompleta
+```
+[ERROR] Incomplete configuration: missing 'cluster' section
+[ERROR] Incomplete configuration: missing 'svm' section
+```
+**Causa**: Faltan secciones obligatorias en config.yaml  
+**Solución**: Asegurar que config.yaml contenga secciones 'cluster' y 'svm'
+
+#### ERR-004: Campos obligatorios faltantes
+```
+[ERROR] Missing required fields in cluster config: host, username
+```
+**Causa**: Faltan campos obligatorios en la configuración del cluster  
+**Solución**: Completar todos los campos requeridos (host, username, password)
+
+### Errores de Conexión
+
+#### ERR-101: Error de autenticación
+```
+[ERROR] HTTP status: 401
+[ERROR] Authentication failed
+[ERROR] Invalid username or password
+```
+**Causa**: Credenciales incorrectas  
+**Solución**: Verificar username y password en config.yaml
+
+#### ERR-102: Acceso denegado
+```
+[ERROR] HTTP status: 403
+[ERROR] Forbidden - User lacks required permissions
+```
+**Causa**: Usuario sin permisos de administrador  
+**Solución**: Usar cuenta con rol admin o vsadmin
+
+#### ERR-103: Host no alcanzable
+```
+[ERROR] Cannot reach host 'cluster1.demo.netapp.com'
+```
+**Causa**: Problemas de red o hostname incorrecto  
+**Solución**: Verificar conectividad de red y hostname/IP del cluster
+
+#### ERR-104: Timeout de conexión
+```
+[ERROR] Connection timeout to 'cluster1.demo.netapp.com'
+```
+**Causa**: Cluster no responde  
+**Solución**: Verificar que el cluster esté encendido y accesible
+
+### Errores de Creación de SVM
+
+#### ERR-201: SVM ya existe
+```
+[ERROR] SVM 'svm_name' already exists on the cluster
+```
+**Causa**: Ya existe una SVM con ese nombre  
+**Solución**: Cambiar nombre en config.yaml o eliminar SVM existente
+
+#### ERR-202: Agregado no existe
+```
+[ERROR] Aggregate 'aggr1' doesn't exist (check aggregate name)
+```
+**Causa**: Nombre de agregado incorrecto o no existe  
+**Solución**: Ejecutar `storage aggregate show` para ver agregados disponibles
+
+#### ERR-203: IPspace inválido
+```
+[ERROR] Bad request - Invalid ipspace name
+```
+**Causa**: IPspace especificado no existe  
+**Solución**: Verificar IPspaces con `network ipspace show`
+
+#### ERR-204: Código de idioma inválido
+```
+[ERROR] Bad request - Invalid language code
+```
+**Causa**: Código de idioma no soportado  
+**Solución**: Usar códigos válidos: c.utf_8, en_us.utf_8, etc.
+
+### Errores de Servicio FCP
+
+#### ERR-301: Servicio FCP ya existe
+```
+[ERROR] FCP service may already exist on this SVM
+```
+**Causa**: La SVM ya tiene servicio FCP configurado  
+**Solución**: Verificar con `vserver fcp show -vserver <name>`
+
+#### ERR-302: Licencia FCP no disponible
+```
+[ERROR] FCP license not installed
+```
+**Causa**: Cluster sin licencia FCP  
+**Solución**: Instalar licencia FCP en el cluster
+
+### Errores de Interfaces de Red
+
+#### ERR-401: Nombre de puerto inválido
 ```
 [ERROR] "1a" is an invalid value for field "location.home_port.name"
 ```
-**Solución**: Añade el prefijo al puerto (ej: `e1a` en lugar de `1a`).
+**Causa**: Falta prefijo en nombre del puerto  
+**Solución**: Usar formato correcto: `e1a` en lugar de `1a`
 
-### Error: "Authentication failed"
+#### ERR-402: Puerto no existe
 ```
-[ERROR] Invalid username or password
+[ERROR] Port 'e9a' does not exist on node 'cluster1-01'
 ```
-**Solución**: Verifica las credenciales en `config.yaml`.
+**Causa**: Puerto especificado no existe en el nodo  
+**Solución**: Verificar puertos con `network port show -node <node>`
 
-## Comandos CLI Equivalentes
-
-Este script automatiza los siguientes comandos CLI:
-
-```bash
-# Crear SVM
-vserver create -vserver svm_name -rootvolume root -aggregate aggr1 \
-  -rootvolume-security-style unix -language C.UTF-8
-
-# Modificar SVM
-vserver modify -vserver svm_name -aggr-list aggr1,aggr2 \
-  -is-space-reporting-logical true -is-space-enforcement-logical true
-
-# Crear servicio FCP
-vserver fcp create -vserver svm_name -status-admin up
-
-# Configurar protocolos
-vserver remove-protocols -vserver svm_name -protocols cifs,nfs
-vserver add-protocols -vserver svm_name -protocols fcp,iscsi
-
-# Crear interfaz FCP
-network interface create -vserver svm_name -lif lif1 \
-  -data-protocol fcp -home-node node1 -home-port e1a -status-admin up
-
-# Crear interfaz management
-network interface create -vserver svm_name -lif lif_mgmt \
-  -service-policy default-management -address 192.168.0.1 \
-  -netmask 255.255.255.0 -home-node node1 -home-port e0a \
-  -status-admin up -auto-revert false
+#### ERR-403: Nodo no existe
 ```
+[ERROR] Node 'cluster1-05' not found
+```
+**Causa**: Nombre de nodo incorrecto  
+**Solución**: Verificar nodos con `cluster show`
+
+#### ERR-404: Interfaz ya existe
+```
+[ERROR] Interface 'lif1' already exists
+```
+**Causa**: Ya existe una LIF con ese nombre  
+**Solución**: Cambiar nombre de LIF en config.yaml
+
+#### ERR-405: Dirección IP duplicada
+```
+[ERROR] IP address 192.168.0.1 is already in use
+```
+**Causa**: Dirección IP ya asignada a otra interfaz  
+**Solución**: Usar una dirección IP diferente
+
+#### ERR-406: Máscara de red inválida
+```
+[ERROR] Invalid netmask format
+```
+**Causa**: Formato de netmask incorrecto  
+**Solución**: Usar formato decimal: 255.255.255.0
+
+#### ERR-407: Service policy no existe
+```
+[ERROR] Service policy 'invalid-policy' not found
+```
+**Causa**: Service policy especificado no existe  
+**Solución**: Usar policies predefinidos: default-management, default-data-files
+
+### Errores de Protocolos
+
+#### ERR-501: Protocolo no soportado
+```
+[ERROR] Bad request - Invalid protocol configuration
+```
+**Causa**: Nombre de protocolo inválido  
+**Solución**: Usar protocolos válidos: nfs, cifs, fcp, iscsi, nvme, s3, ndmp
+
+#### ERR-502: Conflicto de protocolos
+```
+[ERROR] Cannot enable both NFS and CIFS without proper configuration
+```
+**Causa**: Configuración de protocolos incompatible  
+**Solución**: Configurar security-style adecuado para multiprotocolo
+
+### Errores de Event Logs
+
+#### ERR-601: No se pueden obtener event logs
+```
+[WARNING] Event logs backup failed (non-critical)
+```
+**Causa**: Error al consultar API de eventos  
+**Solución**: No crítico, verificar permisos de lectura de eventos
+
+### Códigos de Estado HTTP Comunes
+
+- **400 Bad Request**: Parámetros inválidos en la solicitud
+- **401 Unauthorized**: Credenciales incorrectas
+- **403 Forbidden**: Sin permisos suficientes
+- **404 Not Found**: Recurso no existe
+- **409 Conflict**: Recurso ya existe o conflicto de estado
+- **500 Internal Server Error**: Error interno del servidor ONTAP
 
 ## Seguridad
 
@@ -339,5 +471,5 @@ Para problemas relacionados con la API de NetApp, consulta:
 ---
 
 **Versión**: 1.0  
-**Última actualización**: Enero 2026  
+**Última actualización**: Febrero 2026  
 **Compatible con**: ONTAP 9.6+
