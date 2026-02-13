@@ -457,9 +457,6 @@ Obtiene y respalda los logs de eventos del cluster.
 - El script desactiva verificación SSL (`verify=False`) - úsalo solo en entornos de desarrollo/pruebas
 - Los logs pueden contener información sensible - protege el directorio `logs/`
 
-## Licencia
-
-Este script es para uso interno y educativo.
 
 ## Soporte
 
@@ -468,8 +465,3 @@ Para problemas relacionados con la API de NetApp, consulta:
 - [NetApp Community](https://community.netapp.com/)
 - [Python Client Library](https://pypi.org/project/netapp-ontap/)
 
----
-
-**Versión**: 1.0  
-**Última actualización**: Febrero 2026  
-**Compatible con**: ONTAP 9.6+

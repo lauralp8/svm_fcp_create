@@ -123,15 +123,11 @@ def save_to_log(operation_name, data):
     Guarda datos en un archivo JSON dentro de la carpeta logs/ con timestamp
     
     Args:
-        operation_name (str): Nombre de la operación (ej: 'create_svm', 'fcp_create')
+        operation_name (str): Nombre de la operación realizada
         data (dict): Datos a guardar (normalmente el show de la cabina)
     
     Returns:
         str: Ruta del archivo creado
-    
-    Ejemplo:
-        save_to_log('create_svm', svm_data)
-        # Crea: logs/create_svm_20260129_143025.json
     """
     try:
         # Crear carpeta logs si no existe
@@ -537,7 +533,7 @@ def fcp_create(svm_config):
                 'svm_uuid': fcp_service.svm.uuid if hasattr(fcp_service.svm, 'uuid') else 'N/A'
             }
             
-            # SHOW: Mostrar información como "vserver fcp show -vserver <name>"
+            # SHOW: Mostrar información del servicio FCP creado
             print(f"\n{'='*60}")
             print(f"  FCP Service Show")
             print(f"{'='*60}")
@@ -591,6 +587,7 @@ def configure_protocols(svm_config):
         # Extraer diccionario de protocolos del config.yaml
         protocols_config = svm_config.get('protocols', {})
         
+        # VALIDACIONES
         # Validar que haya protocolos para configurar
         if not protocols_config:
             print(f"[WARNING] No protocol configuration found in config.yaml")
@@ -707,6 +704,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         bool: True si todas se crearon exitosamente
     """
     try:
+        # VALIDACIONES
         # Validar que haya interfaces para crear
         if not net_interfaces_config:
             print(f"[WARNING] No network interfaces configured")
@@ -763,10 +761,12 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"\n[*] Retrieving FC network interfaces from cluster...")
         interfaces_list = []
         
+        # Obtener todas las interfaces FC de la SVM usando un filtro por nombre de SVM
         fc_interfaces = FcInterface.get_collection(**{'svm.name': svm_name})
         for fc_lif in fc_interfaces:
             fc_lif.get()
             
+            # Extraer los datos para el show
             interface_data = {
                 'vserver': svm_name,
                 'interface': fc_lif.name,
@@ -780,6 +780,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
             }
             interfaces_list.append(interface_data)
         
+        # Preparar datos para guardar en log
         network_data = {
             'vserver_name': svm_name,
             'interfaces': interfaces_list,
@@ -793,6 +794,7 @@ def create_network_interfaces(svm_name, net_interfaces_config):
         print(f"{'Vserver':<15} {'Interface':<20} {'Admin/Oper':<12} {'WWPN':<25} {'Node':<15} {'Port':<8} {'Home':<5}")
         print(f"{'-'*15} {'-'*20} {'-'*12} {'-'*25} {'-'*15} {'-'*8} {'-'*5}")
         
+        # Iterar por cada interfaz y mostrar su información
         for iface in interfaces_list:
             admin_oper = f"{iface['status_admin']}/{iface['status_oper']}"
             is_home_str = 'true' if iface['is_home'] else 'false'
@@ -852,6 +854,7 @@ def create_management_interface(svm_name, mgmt_config):
         else:
             status_admin = False
         
+        # VALIDACIONES
         # Validar campos obligatorios
         if not all([lif, service_policy, address, netmask, home_node, home_port]):
             print(f"[ERROR] Management interface: Missing required fields")
@@ -904,10 +907,11 @@ def create_management_interface(svm_name, mgmt_config):
         
         print(f"[+] Management interface '{lif}' created successfully")
         
-        # GET: Obtener la interfaz IP creada desde la cabina (filtrado por nombre)
+        # GET: Obtener la interfaz IP creada desde la cabina (filtrado por nombre de SVM y de interfaz)
         print(f"\n[*] Retrieving management interface from cluster...")
         ip_interface = IpInterface.find(name=lif, svm={'name': svm_name})
         
+        # Extraer los datos para el show
         if ip_interface:
             ip_interface.get()
             
@@ -931,6 +935,7 @@ def create_management_interface(svm_name, mgmt_config):
             print(f"{'Vserver':<15} {'Interface':<20} {'Admin/Oper':<12} {'Address/Mask':<22} {'Node':<15} {'Port':<8} {'Home':<5}")
             print(f"{'-'*15} {'-'*20} {'-'*12} {'-'*22} {'-'*15} {'-'*8} {'-'*5}")
             
+            # Combinar status_admin y status_oper en una sola columna para mostrar "up/down" o "down/down", etc.
             admin_oper = f"{mgmt_data['status_admin']}/{mgmt_data['status_oper']}"
             address_mask = f"{mgmt_data['address']}/{mgmt_data['netmask']}"
             is_home_str = 'true' if mgmt_data['is_home'] else 'false'
@@ -1004,9 +1009,11 @@ def get_event_logs(max_records=100):
         print(f"{'Index':<8} {'Time':<25} {'Node':<20} {'Severity':<12} {'Event':<40}")
         print(f"{'-'*8} {'-'*25} {'-'*20} {'-'*12} {'-'*40}")
         
+        # Iterar por cada evento y mostrar su información 
         for evt in events_list[:20]:  # Mostrar solo los primeros 20 en pantalla
             print(f"{str(evt['index']):<8} {evt['time']:<25} {evt['node']:<20} {evt['severity']:<12} {evt['event']:<40}")
         
+        # Limitado a los primeros 20 para no saturar la pantalla
         if len(events_list) > 20:
             print(f"... ({len(events_list) - 20} more events)")
         
@@ -1037,7 +1044,7 @@ def get_event_logs(max_records=100):
 # CALLING WORKFLOW
 # ============================================================================
 
-# CONFIG YAML LOADER
+# ---------- CONFIG YAML LOADER ----------
 # Cargar la configuración desde el archivo YAML
 config_data = config_loader()
 
@@ -1049,7 +1056,7 @@ if config_data is None:
 else:
     print("\n[SUCCESS] Configuration loaded - Proceeding with pre-checks")
 
-# CLUSTER CONNECTION CHECK
+# ---------- CLUSTER CONNECTION CHECK ----------
 # Establecer conexión y verificar acceso a la cabina NetApp
 if not cluster_connection(config_data['cluster']):
     print("\n[ERROR] Failed to connect to NetApp cluster")
@@ -1058,7 +1065,7 @@ if not cluster_connection(config_data['cluster']):
 
 print("\n[+] All pre-checks passed - Ready to create SVM")
 
-# SVM CREATION STEPS
+# ---------- SVM CREATION STEPS ----------
 # Crear la SVM
 if create_svm(config_data['svm']):
     print("\n[SUCCESS] SVM creation completed!")
@@ -1073,7 +1080,7 @@ else:
     print("\n[FAILED] SVM modification failed")
     exit(1)
 
-# FCP SERVICE CREATION STEPS
+# ---------- FCP SERVICE CREATION STEPS ----------
 # Crear servicio FCP en la SVM
 if fcp_create(config_data['svm']):
     print("\n[SUCCESS] FCP service creation completed!")
@@ -1088,7 +1095,7 @@ else:
     print("\n[FAILED] Protocol configuration failed")
     exit(1)
 
-# NETWORK INTERFACE CREATION STEPS
+# ---------- NETWORK INTERFACE CREATION STEPS ----------
 # Crear network interfaces
 net_interfaces = config_data.get('net_interfaces', [])
 if create_network_interfaces(config_data['svm']['name'], net_interfaces):
@@ -1097,7 +1104,7 @@ else:
     print("\n[FAILED] Network interfaces creation failed")
     exit(1)
 
-# MANAGEMENT FCP NETWORK INTERFACE CREATION STEPS
+# ---------- MANAGEMENT FCP NETWORK INTERFACE CREATION STEPS ----------
 # Crear management interface
 mgmt_interface = config_data.get('mgmt_interface', {})
 if create_management_interface(config_data['svm']['name'], mgmt_interface):
@@ -1106,6 +1113,7 @@ else:
     print("\n[FAILED] Management interface creation failed")
     exit(1)
 
+# ---------- EVENT LOG RETRIEVAL ----------
 # Obtener event logs de la cabina como backup
 if get_event_logs(max_records=100):
     print("\n[SUCCESS] Event logs backup completed!")
