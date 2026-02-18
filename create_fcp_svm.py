@@ -292,14 +292,14 @@ def create_svm(svm_config):
             new_svm.language = language
             print(f"[*] Language: {language}")
         
-        # Configurar security style
-        if security_style:
-            new_svm.security_style = security_style
-            print(f"[*] Security Style: {security_style}")
-        
-        # Configurar nombre del volumen raíz
+        # Configurar nombre del volumen raíz y security style
         if root_volume:
-            new_svm.root_volume = {'name': root_volume}
+            root_vol_config = {'name': root_volume}
+            # El security_style se configura en el volumen root
+            if security_style:
+                root_vol_config['security_style'] = security_style
+                print(f"[*] Root Volume Security Style: {security_style}")
+            new_svm.root_volume = root_vol_config
             print(f"[*] Root Volume: {root_volume}")
         
         # Especificar el agregado para el volumen raíz
@@ -316,7 +316,7 @@ def create_svm(svm_config):
         print(f"\n[*] Retrieving SVM details from cluster...")
         svm_created = Svm.find(name=svm_name)
         svm_show = Svm(uuid=svm_created.uuid)
-        svm_show.get(fields='uuid,name,state,ipspace,language,security_style,aggregates')
+        svm_show.get(fields='uuid,name,state,ipspace,language,aggregates')
         
         # Preparar datos para guardar en log
         svm_data = {
@@ -325,7 +325,7 @@ def create_svm(svm_config):
             'state': svm_show.state if hasattr(svm_show, 'state') else None,
             'ipspace': svm_show.ipspace.name if hasattr(svm_show, 'ipspace') and svm_show.ipspace else None,
             'language': svm_show.language if hasattr(svm_show, 'language') else None,
-            'security_style': svm_show.security_style if hasattr(svm_show, 'security_style') else None,
+            'root_volume_security_style': security_style if security_style else None,
             'aggregates': [
                 {'name': aggr.name, 'uuid': aggr.uuid} 
                 for aggr in svm_show.aggregates
@@ -341,7 +341,7 @@ def create_svm(svm_config):
         print(f"State:                   {svm_data['state'] or 'N/A'}")
         print(f"IPspace:                 {svm_data['ipspace'] or 'N/A'}")
         print(f"Language:                {svm_data['language'] or 'N/A'}")
-        print(f"Security Style:          {svm_data['security_style'] or 'N/A'}")
+        print(f"Root Volume Sec. Style:  {svm_data['root_volume_security_style'] or 'N/A'}")
         if svm_data['aggregates']:
             print(f"Aggregates:")
             for aggr in svm_data['aggregates']:
