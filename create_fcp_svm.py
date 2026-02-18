@@ -259,6 +259,7 @@ def create_svm(svm_config):
         language = svm_config.get('language')
         security_style = svm_config.get('security_style')
         aggregate = svm_config.get('aggregate')
+        root_volume = svm_config.get('root_volume')
         
         # VALIDACIONES
         # Validar que exista el valor obligatorio 'name'
@@ -295,6 +296,11 @@ def create_svm(svm_config):
         if security_style:
             new_svm.security_style = security_style
             print(f"[*] Security Style: {security_style}")
+        
+        # Configurar nombre del volumen raíz
+        if root_volume:
+            new_svm.root_volume = {'name': root_volume}
+            print(f"[*] Root Volume: {root_volume}")
         
         # Especificar el agregado para el volumen raíz
         new_svm.aggregates = [{'name': aggregate}]

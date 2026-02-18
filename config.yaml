@@ -10,9 +10,10 @@ cluster:
 
 # ---------- Configuración de la SVM FCP ----------
 svm: 
-  name: svm_1_cluster
+  name: SVMv2-cert-rhoso-san3000
   ipspace: Default
   aggregate: cluster1_01_SSD_1
+  root_volume: rootvol
   language: c.utf_8
   security_style: unix
 
