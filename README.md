@@ -54,6 +54,7 @@ Configuración de la Storage Virtual Machine:
 - `name`: Nombre de la SVM a crear
 - `ipspace`: IPspace (default: Default)
 - `aggregate`: Agregado para volumen raíz
+- `root_volume`: Nombre del volumen raíz de la SVM (default: rootvol)
 - `language`: Código de idioma (default: c.utf_8)
 - `security_style`: Estilo de seguridad (unix/ntfs/mixed)
 - `aggr_list`: Lista de agregados permitidos
@@ -200,10 +201,11 @@ Establece y verifica conexión con el cluster NetApp ONTAP.
 
 #### create_svm(svm_config)
 Crea una Storage Virtual Machine con parámetros básicos.
-- **Entrada**: Configuración de SVM desde config.yaml
+- **Entrada**: Configuración de SVM desde config.yaml (name, ipspace, aggregate, root_volume, language, security_style)
 - **Salida**: True si se creó, False si error
 - **POST**: `/api/svm/svms`
 - **Log**: `create_svm_YYYYMMDD_HHMMSS.json`
+- **Nota**: El parámetro `root_volume` especifica el nombre del volumen raíz de la SVM (ej: rootvol)
 
 #### modify_svm(svm_config)
 Modifica parámetros de espacio lógico y lista de agregados.
