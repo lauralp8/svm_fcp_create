@@ -42,7 +42,7 @@ net_interfaces:
     data_protocol: fcp
     home_node: cluster1-02
     home_port: 1b
-    status_admin: down 
+    status_admin: up 
   
   - lif: lif_2_cluster1
     data_protocol: fcp
