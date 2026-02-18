@@ -316,7 +316,7 @@ def create_svm(svm_config):
         print(f"\n[*] Retrieving SVM details from cluster...")
         svm_created = Svm.find(name=svm_name)
         svm_show = Svm(uuid=svm_created.uuid)
-        svm_show.get(fields='*')
+        svm_show.get(fields='uuid,name,state,ipspace,language,security_style,aggregates')
         
         # Preparar datos para guardar en log
         svm_data = {
