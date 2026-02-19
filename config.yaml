@@ -2,13 +2,13 @@
 # CONFIGURACIÓN PARA CREAR SVM CON SERVICIO FCP USANDO API REST DE ONTAP
 # ============================================================================
 
-# ---------- Configuración del clúster ----------
+# CONFIGURACIÓN DEL CLUSTER
 cluster:
   host: cluster1.demo.netapp.com
   username: admin
   password: Netapp1!
 
-# ---------- Configuración de la SVM FCP ----------
+# CONFIGURACIÓN DE LA SVM FCP
 svm: 
   name: SVMv2-cert-rhoso-san3000
   ipspace: Default
@@ -36,7 +36,7 @@ svm:
     fcp: true
     iscsi: true
 
-# ---------- Interfaces de red ----------
+# INTERFACES DE RED
 net_interfaces:
   - lif: lif_1_cluster1
     data_protocol: fcp
@@ -56,7 +56,7 @@ net_interfaces:
     home_port: 0a
     status_admin: up  
 
-# ---------- Interfaz de Gestión ----------
+# INTERFAZ DE GESTIÓN
 mgmt_interface:
   lif: management
   service_policy: default-management
