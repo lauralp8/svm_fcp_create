@@ -4,7 +4,7 @@
 
 # CONFIGURACIÓN DEL CLUSTER
 cluster:
-  host: cluster1.demo.netapp.com
+  host: cluster2.demo.netapp.com
   username: admin
   password: Netapp1!
 
@@ -12,15 +12,15 @@ cluster:
 svm: 
   name: SVMv2-cert-rhoso-san3000
   ipspace: Default
-  aggregate: cluster1_01_SSD_1
+  aggregate: cluster2_01_SSD_1
   root_volume: rootvol
   language: c.utf_8
   security_style: unix
 
   # Parámetros de modificación
   aggr_list:
-    - cluster1_01_SSD_1
-    - cluster1_02_SSD_1
+    - cluster2_01_SSD_1
+    - cluster2_02_SSD_1
   is_space_reporting_logical: true
   is_space_enforcement_logical: true
 
@@ -38,21 +38,21 @@ svm:
 
 # INTERFACES DE RED
 net_interfaces:
-  - lif: lif_1_cluster1
+  - lif: lif_1_cluster2
     data_protocol: fcp
-    home_node: cluster1-02
+    home_node: cluster2-02
     home_port: 1b
     status_admin: up 
   
-  - lif: lif_2_cluster1
+  - lif: lif_2_cluster2
     data_protocol: fcp
-    home_node: cluster1-02
+    home_node: cluster2-02
     home_port: 0b
     status_admin: up  
   
-  - lif: lif_3_cluster1
+  - lif: lif_3_cluster2
     data_protocol: fcp
-    home_node: cluster1-02
+    home_node: cluster2-02
     home_port: 0a
     status_admin: up  
 
@@ -62,7 +62,7 @@ mgmt_interface:
   service_policy: default-management
   address: 192.168.0.120
   netmask: 255.255.255.0
-  home_node: cluster1-02
+  home_node: cluster2-02
   home_port: e0c
   status_admin: up  
   auto_revert: false
